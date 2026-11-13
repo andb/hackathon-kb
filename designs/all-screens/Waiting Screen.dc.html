@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#E9E4DA;font-family:'Atkinson Hyperlegible',sans-serif;color:#1E2626}
+a{color:#0B5E5C}a:hover{color:#084544}
+@keyframes cu-drift{0%,100%{transform:translate(var(--fx),var(--fy))}50%{transform:translate(var(--tx),var(--ty))}}
+@keyframes cu-pulse{0%{box-shadow:0 0 0 0 rgba(11,94,92,.45)}70%{box-shadow:0 0 0 10px rgba(11,94,92,0)}100%{box-shadow:0 0 0 0 rgba(11,94,92,0)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</helmet>
+<section style="padding:48px;display:flex;flex-direction:column;gap:32px">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="font-family:'Young Serif',serif;font-size:32px;color:#0B4F4D">Waiting screen</div>
+    <div style="font-size:18px;color:#3B3832">Opens after Join. Changes to Your group by itself when the organiser starts the round.</div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:48px;align-items:flex-start">
+    <sc-for list="{{ states }}" as="s" hint-placeholder-count="3">
+      <div id="{{ s.id }}" style="display:flex;flex-direction:column;gap:14px;width:399px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:14px;font-weight:700;background:#0B5E5C;color:#fff;padding:3px 9px;border-radius:999px">{{ s.id }}</span>
+          <span style="font-size:20px;font-weight:700">{{ s.label }}</span>
+        </div>
+        <div style="background:#1C1C1C;padding:12px;border-radius:56px;box-shadow:0 20px 50px rgba(40,30,10,.25)">
+          <div style="position:relative;width:375px;height:812px;border-radius:44px;overflow:hidden;background:#FAF6EF;display:flex;flex-direction:column">
+            <div style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 28px;font-size:15px;font-weight:700">
+              <span>9:41</span><span style="width:26px;height:12px;border:2px solid #1E2626;border-radius:4px"></span>
+            </div>
+            <div style="padding:12px 24px 0;font-family:'Young Serif',serif;font-size:22px;color:#0B4F4D">Circle Up</div>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:28px;padding:0 24px">
+              <div style="height:200px;display:flex;align-items:center;justify-content:center">{{ circles }}</div>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div style="font-family:'Young Serif',serif;font-size:44px;line-height:1.1;color:#0B4F4D">You're in.</div>
+                <div style="font-size:22px;line-height:1.35;text-wrap:pretty">{{ s.line }}</div>
+                <sc-if value="{{ s.between }}">
+                  <div style="font-size:19px;line-height:1.4;text-wrap:pretty">Your groups from earlier rounds are in <a href="#" style="font-weight:700;text-decoration:underline;text-underline-offset:3px">My evening</a>.</div>
+                </sc-if>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;font-size:18px;line-height:1.35">
+                {{ dot }}
+                <span>Keep this page open. It changes by itself.</span>
+              </div>
+            </div>
+            <div style="flex:none;padding:0 24px 30px;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:#E3F0EE;border-radius:16px;padding:14px 16px">
+                <span style="font-size:20px;font-weight:700">{{ s.who }}</span>
+                <span style="font-size:12px;font-weight:700;background:#F2DFA7;color:#4D3A00;padding:2px 8px;border-radius:999px">test data</span>
+              </div>
+              <button style="height:52px;width:100%;border:none;border-radius:14px;background:transparent;color:#1E2626;font-family:'Atkinson Hyperlegible',sans-serif;font-size:18px;font-weight:700;text-decoration:underline;text-underline-offset:4px;cursor:pointer" style-hover="background:#EFE9DE">Withdraw</button>
+            </div>
+            <sc-if value="{{ s.sheet }}">
+              <div style="position:absolute;inset:0;background:rgba(20,26,26,.5);display:flex;flex-direction:column;justify-content:flex-end">
+                <div style="background:#FAF6EF;border-radius:28px 28px 0 0;padding:28px 24px 34px;display:flex;flex-direction:column;gap:20px">
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <div style="font-family:'Young Serif',serif;font-size:30px;line-height:1.15;color:#0B4F4D">Leave this round?</div>
+                    <div style="font-size:19px;line-height:1.4">You will not get a group this round.</div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:12px">
+                    <button style="height:58px;width:100%;border:none;border-radius:16px;background:#0B5E5C;color:#fff;font-family:'Atkinson Hyperlegible',sans-serif;font-size:20px;font-weight:700;cursor:pointer" style-hover="background:#094E4C">Stay</button>
+                    <button style="height:58px;width:100%;border:2px solid #A1271B;border-radius:16px;background:#fff;color:#A1271B;font-family:'Atkinson Hyperlegible',sans-serif;font-size:20px;font-weight:700;cursor:pointer" style-hover="background:#F8E1DC">Leave</button>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+        <div style="font-size:16px;line-height:1.4;color:#3B3832;text-wrap:pretty">{{ s.note }}</div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const h = React.createElement;
+    const spec = [
+      { s: 72, c: '#0B5E5C', o: .9, f: [-70, -28], t: [-26, -10], d: 7 },
+      { s: 56, c: '#3E8F8B', o: .8, f: [72, -36], t: [28, -12], d: 8 },
+      { s: 64, c: '#7DB9B3', o: .85, f: [-56, 44], t: [-18, 16], d: 9 },
+      { s: 48, c: '#B5D8D3', o: .95, f: [64, 46], t: [24, 18], d: 7.5 }
+    ];
+    const circles = h('div', { style: { position: 'relative', width: 260, height: 200 } },
+      spec.map((p, i) => h('div', { key: i, style: {
+        position: 'absolute', left: 130 - p.s / 2, top: 100 - p.s / 2, width: p.s, height: p.s,
+        borderRadius: '50%', background: p.c, opacity: p.o,
+        '--fx': p.f[0] + 'px', '--fy': p.f[1] + 'px', '--tx': p.t[0] + 'px', '--ty': p.t[1] + 'px',
+        transform: `translate(${p.f[0]}px,${p.f[1]}px)`,
+        animation: `cu-drift ${p.d}s ease-in-out ${i * -1.3}s infinite`
+      } })));
+    const dot = h('span', { style: { flex: 'none', width: 12, height: 12, borderRadius: '50%', background: '#0B5E5C', animation: 'cu-pulse 2s ease-out infinite' } });
+    const states = [
+      { id: '2a', label: 'Waiting', line: 'Groups appear when the round starts.', who: 'Maya, round 1', note: 'Main state. Circles drift slowly together and apart; the dot pulses to show the page is live.' },
+      { id: '2b', label: 'Withdraw tapped', line: 'Groups appear when the round starts.', who: 'Maya, round 1', sheet: true, note: 'Stay closes the sheet. Leave removes the person from this round only.' },
+      { id: '2c', label: 'Between rounds', line: 'Next round starts soon.', between: true, who: 'Maya, round 2', note: 'After a round ends. Same screen, new line.' }
+    ];
+    return { states, circles, dot };
+  }
+}
+</script>
+</body>
+</html>

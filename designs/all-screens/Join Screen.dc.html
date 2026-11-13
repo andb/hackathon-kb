@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#E9E4DA;font-family:'Atkinson Hyperlegible',sans-serif;color:#1E2626}
+a{color:#0B5E5C}a:hover{color:#084544}
+input::placeholder{color:#6A655D;opacity:1}
+</style>
+</helmet>
+<section style="padding:48px;display:flex;flex-direction:column;gap:32px">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="font-family:'Young Serif',serif;font-size:32px;color:#0B4F4D">Join screen</div>
+    <div style="font-size:18px;color:#3B3832">Main frame first, then each state.</div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:48px;align-items:flex-start">
+    <sc-for list="{{ states }}" as="s" hint-placeholder-count="7">
+      <div id="{{ s.id }}" style="display:flex;flex-direction:column;gap:14px;width:399px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:14px;font-weight:700;background:#0B5E5C;color:#fff;padding:3px 9px;border-radius:999px">{{ s.id }}</span>
+          <span style="font-size:20px;font-weight:700">{{ s.label }}</span>
+        </div>
+        <div style="background:#1C1C1C;padding:12px;border-radius:56px;box-shadow:0 20px 50px rgba(40,30,10,.25)">
+          <div style="width:375px;height:812px;border-radius:44px;overflow:hidden;background:#FAF6EF;display:flex;flex-direction:column">
+            <div style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 28px;font-size:15px;font-weight:700">
+              <span>9:41</span><span style="width:26px;height:12px;border:2px solid #1E2626;border-radius:4px"></span>
+            </div>
+            <div style="flex:1;overflow-y:auto;padding:16px 20px 28px;display:flex;flex-direction:column;gap:28px">
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <div style="font-family:'Young Serif',serif;font-size:40px;line-height:1.1;color:#0B4F4D">Circle Up</div>
+                <div style="font-size:20px;line-height:1.35;text-wrap:pretty">Small groups, so nobody stands alone.</div>
+              </div>
+              <div style="background:#E3F0EE;border-radius:18px;padding:16px 18px;display:flex;flex-direction:column;gap:4px">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                  <span style="font-size:17px">You are joining</span>
+                  <span style="font-size:12px;font-weight:700;background:#F2DFA7;color:#4D3A00;padding:2px 8px;border-radius:999px">test data</span>
+                </div>
+                <div style="font-family:'Young Serif',serif;font-size:24px;line-height:1.2;color:#0B4F4D">Founders Evening, Prague</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <label style="font-size:18px;font-weight:700">Event code</label>
+                  <sc-if value="{{ s.codeTag }}"><span style="font-size:12px;font-weight:700;background:#F2DFA7;color:#4D3A00;padding:2px 8px;border-radius:999px">test data</span></sc-if>
+                </div>
+                <input readOnly="{{ true }}" inputMode="numeric" value="{{ s.code }}" placeholder="4 digits" style="height:72px;box-sizing:border-box;width:100%;border-radius:16px;border:2px solid {{ s.codeBorder }};background:#fff;font-family:'Atkinson Hyperlegible',sans-serif;font-size:36px;font-weight:700;letter-spacing:12px;padding:0 20px;color:#1E2626;outline:none">
+                <div style="font-size:17px">On the big screen in the room.</div>
+                <sc-if value="{{ s.qr }}">
+                  <div style="display:flex;align-items:center;gap:8px;font-size:17px;font-weight:700;color:#0B5E5C">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+                    Filled in from the QR code
+                  </div>
+                </sc-if>
+                <sc-if value="{{ s.codeError }}">
+                  <div style="display:flex;align-items:center;gap:8px;font-size:17px;font-weight:700;color:#A1271B">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4M12 16h.01"></path></svg>
+                    {{ s.codeError }}
+                  </div>
+                </sc-if>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <label style="font-size:18px;font-weight:700">Your full name (required)</label>
+                  <sc-if value="{{ s.nameTag }}"><span style="font-size:12px;font-weight:700;background:#F2DFA7;color:#4D3A00;padding:2px 8px;border-radius:999px">test data</span></sc-if>
+                </div>
+                <input readOnly="{{ true }}" value="{{ s.name }}" placeholder="First and last name" style="height:56px;box-sizing:border-box;width:100%;border-radius:14px;border:2px solid {{ s.nameBorder }};background:#fff;font-family:'Atkinson Hyperlegible',sans-serif;font-size:19px;padding:0 16px;color:#1E2626;outline:none">
+                <sc-if value="{{ s.nameError }}">
+                  <div style="display:flex;align-items:center;gap:8px;font-size:17px;font-weight:700;color:#A1271B">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4M12 16h.01"></path></svg>
+                    {{ s.nameError }}
+                  </div>
+                </sc-if>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+                  <label style="font-size:18px;font-weight:700;line-height:1.3">What would you like to talk about?</label>
+                  <sc-if value="{{ s.topicTag }}"><span style="flex:none;font-size:12px;font-weight:700;background:#F2DFA7;color:#4D3A00;padding:2px 8px;border-radius:999px">test data</span></sc-if>
+                </div>
+                <input readOnly="{{ true }}" maxLength="140" value="{{ s.topic }}" placeholder="One line is enough" style="height:56px;box-sizing:border-box;width:100%;border-radius:14px;border:2px solid #CFC7BA;background:#fff;font-family:'Atkinson Hyperlegible',sans-serif;font-size:19px;padding:0 16px;color:#1E2626;outline:none;text-overflow:ellipsis">
+                <div style="align-self:flex-end;font-size:16px;color:#3B3832">{{ s.count }} / 140</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="font-size:18px;font-weight:700">Profile addresses (optional)</span>
+                    <sc-if value="{{ s.linkTag }}"><span style="font-size:12px;font-weight:700;background:#F2DFA7;color:#4D3A00;padding:2px 8px;border-radius:999px">test data</span></sc-if>
+                  </div>
+                  <div style="font-size:17px;line-height:1.4;color:#3B3832;text-wrap:pretty">These help the app find themes you share with your group. Others see them only when they tap your name.</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <label style="font-size:17px;font-weight:700">LinkedIn</label>
+                  <input readOnly="{{ true }}" value="{{ s.li }}" placeholder="linkedin.com/in/…" style="height:52px;box-sizing:border-box;width:100%;border-radius:14px;border:2px solid #CFC7BA;background:#fff;font-family:'Atkinson Hyperlegible',sans-serif;font-size:18px;padding:0 16px;color:#1E2626;outline:none">
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <label style="font-size:17px;font-weight:700">GitHub</label>
+                  <input readOnly="{{ true }}" value="{{ s.gh }}" placeholder="github.com/…" style="height:52px;box-sizing:border-box;width:100%;border-radius:14px;border:2px solid #CFC7BA;background:#fff;font-family:'Atkinson Hyperlegible',sans-serif;font-size:18px;padding:0 16px;color:#1E2626;outline:none">
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <label style="font-size:17px;font-weight:700">Personal site</label>
+                  <input readOnly="{{ true }}" value="{{ s.site }}" placeholder="yoursite.com" style="height:52px;box-sizing:border-box;width:100%;border-radius:14px;border:2px solid #CFC7BA;background:#fff;font-family:'Atkinson Hyperlegible',sans-serif;font-size:18px;padding:0 16px;color:#1E2626;outline:none">
+                </div>
+              </div>
+            </div>
+            <div style="flex:none;border-top:1px solid #E2DACD;background:#FAF6EF;padding:14px 20px 30px;display:flex;flex-direction:column;gap:12px">
+              <sc-if value="{{ s.banner }}">
+                <div style="display:flex;align-items:flex-start;gap:10px;background:#F8E1DC;color:#7E1D13;border-radius:14px;padding:12px 14px;font-size:17px;font-weight:700;line-height:1.35">
+                  <svg style="flex:none;margin-top:1px" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+                  {{ s.banner }}
+                </div>
+              </sc-if>
+              <div style="display:flex;gap:10px;align-items:flex-start;font-size:16px;line-height:1.4;color:#2F2C27">
+                <svg style="flex:none;margin-top:1px;color:#0B5E5C" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                <span>What you type is used only to form your groups. Nobody ever sees how they were rated.</span>
+              </div>
+              <sc-if value="{{ s.loading }}">
+                <div style="height:58px;border-radius:16px;background:#CFC9BF;color:#3B3832;font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:10px">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.6"></path></svg>
+                  Joining...
+                </div>
+              </sc-if>
+              <sc-if value="{{ s.ready }}">
+                <button style="height:58px;width:100%;border:none;border-radius:16px;background:#0B5E5C;color:#fff;font-family:'Atkinson Hyperlegible',sans-serif;font-size:20px;font-weight:700;cursor:pointer" style-hover="background:#094E4C" style-active="background:#073F3D">Join</button>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:16px;line-height:1.4;color:#3B3832;text-wrap:pretty">{{ s.note }}</div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const full = { code: '4821', name: 'Maya Novak', topic: 'How small teams decide what to build next', li: 'linkedin.com/in/mayanovak', gh: 'github.com/mnovak', site: 'mayanovak.cz' };
+    const blank = { code: '', name: '', topic: '', li: '', gh: '', site: '' };
+    const raw = [
+      { id: '1a', label: 'Filled in, ready to join', ...full, note: 'Tapping Join checks the code, then opens the Waiting screen.' },
+      { id: '1b', label: 'Empty', ...blank, note: 'All fields blank. Join stays tappable so it can show what is missing.' },
+      { id: '1c', label: 'Code from QR', ...blank, code: '4821', qr: true, note: 'Opened by scanning the QR code. The code is already in place.' },
+      { id: '1d', label: 'Missing name', ...full, name: '', nameError: 'Please enter your full name', note: 'Shown after tapping Join with the name blank.' },
+      { id: '1e', label: 'Loading', ...full, loading: true, note: 'Button greyed out while the code is checked.' },
+      { id: '1f', label: 'Error: wrong code', ...full, code: '4812', codeError: 'Check the code on the screen', note: 'Code did not match an open event.' },
+      { id: '1g', label: 'Error: too many tries', ...full, code: '4812', banner: 'Too many joins, try again in a minute', note: 'After several wrong codes. Join is paused for a minute.' }
+    ];
+    const states = raw.map(s => ({
+      ...s,
+      codeTag: !!s.code, nameTag: !!s.name, topicTag: !!s.topic, linkTag: !!(s.li || s.gh || s.site),
+      count: s.topic.length,
+      codeBorder: s.codeError ? '#A1271B' : (s.code ? '#0B5E5C' : '#CFC7BA'),
+      nameBorder: s.nameError ? '#A1271B' : '#CFC7BA',
+      ready: !s.loading
+    }));
+    return { states };
+  }
+}
+</script>
+</body>
+</html>

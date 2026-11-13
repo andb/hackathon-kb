@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#E9E4DA;font-family:'Atkinson Hyperlegible',sans-serif;color:#1E2626}
+a{color:#0B5E5C}a:hover{color:#084544}
+</style>
+</helmet>
+<section style="padding:48px;display:flex;flex-direction:column;gap:32px">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="font-family:'Young Serif',serif;font-size:32px;color:#0B4F4D">Projector view · 1920 × 1080</div>
+    <div style="font-size:18px;color:#3B3832">Look-only screen. No buttons.</div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:56px">
+    <sc-for list="{{ states }}" as="s" hint-placeholder-count="3">
+      <div id="{{ s.id }}" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:14px;font-weight:700;background:#0B5E5C;color:#fff;padding:3px 9px;border-radius:999px">{{ s.id }}</span>
+          <span style="font-size:20px;font-weight:700">{{ s.label }}</span>
+          <span style="font-size:17px;color:#3B3832">{{ s.note }}</span>
+        </div>
+        <div style="width:1920px;height:1080px;box-sizing:border-box;background:#FAF6EF;border-radius:16px;box-shadow:0 20px 50px rgba(40,30,10,.22);padding:64px 80px;display:flex;flex-direction:column;gap:48px;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span style="font-family:'Young Serif',serif;font-size:72px;line-height:1;color:#0B4F4D">Circle Up</span>
+            <span style="font-family:'Young Serif',serif;font-size:72px;line-height:1;color:#1E2626">Round 2</span>
+          </div>
+          <div style="flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 120px minmax(0,1fr);align-items:stretch">
+            <div style="background:#fff;border-radius:36px;padding:44px 48px;display:flex;flex-direction:column;gap:28px;box-shadow:0 2px 0 #E2DACD">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+                <span style="font-family:'Young Serif',serif;font-size:52px;line-height:1.1;color:#1E2626">Rules version 1</span>
+                <span style="font-size:24px;font-weight:700;background:#F2DFA7;color:#4D3A00;padding:4px 14px;border-radius:999px">test data</span>
+              </div>
+              <sc-for list="{{ v1 }}" as="r" hint-placeholder-count="4">
+                <div style="font-size:42px;font-weight:700;line-height:1.2;padding-bottom:20px;border-bottom:2px solid #EDE6DA">{{ r }}</div>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:center">
+              <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#0B5E5C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+            </div>
+            <sc-if value="{{ s.after }}">
+              <div style="background:#fff;border-radius:36px;padding:44px 48px;display:flex;flex-direction:column;gap:22px;box-shadow:0 2px 0 #E2DACD;border:4px solid #0B5E5C">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+                  <span style="font-family:'Young Serif',serif;font-size:52px;line-height:1.1;color:#0B4F4D">Rules version 2</span>
+                  <span style="font-size:24px;font-weight:700;background:#F2DFA7;color:#4D3A00;padding:4px 14px;border-radius:999px">test data</span>
+                </div>
+                <sc-for list="{{ v2 }}" as="r" hint-placeholder-count="4">
+                  <sc-if value="{{ r.changed }}">
+                    <div style="background:#0B5E5C;color:#fff;border-radius:22px;padding:18px 24px;display:flex;flex-direction:column;gap:6px">
+                      <span style="font-size:42px;font-weight:700;line-height:1.2">{{ r.rule }}</span>
+                      <span style="font-size:30px;line-height:1.3">{{ r.why }}</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ r.same }}">
+                    <div style="font-size:42px;font-weight:700;line-height:1.2;padding:4px 24px 16px;border-bottom:2px solid #EDE6DA">{{ r.rule }}</div>
+                  </sc-if>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ s.before }}">
+              <div style="border-radius:36px;padding:44px 48px;display:flex;flex-direction:column;justify-content:center;gap:28px;border:4px dashed #9CC4BF;background:#F1F8F7">
+                <span style="font-family:'Young Serif',serif;font-size:52px;line-height:1.1;color:#0B4F4D">Rules version 2</span>
+                <span style="font-size:48px;font-weight:700;line-height:1.25;color:#1E2626">Waiting for the rules to improve</span>
+                <div style="display:flex;gap:16px">
+                  <span style="width:40px;height:40px;border-radius:50%;background:#0B5E5C"></span>
+                  <span style="width:40px;height:40px;border-radius:50%;background:#3E8F8B"></span>
+                  <span style="width:40px;height:40px;border-radius:50%;background:#7DB9B3"></span>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:32px">
+            <sc-for list="{{ s.nums }}" as="n" hint-placeholder-count="3">
+              <div style="background:#E3F0EE;border-radius:28px;padding:24px 36px;display:flex;align-items:center;gap:24px">
+                <span style="font-size:40px;font-weight:700">{{ n.label }}</span>
+                <span style="font-family:'Young Serif',serif;font-size:96px;line-height:1;color:#0B4F4D">{{ n.value }}</span>
+                <sc-if value="{{ n.test }}"><span style="margin-left:auto;font-size:24px;font-weight:700;background:#F2DFA7;color:#4D3A00;padding:4px 14px;border-radius:999px">test data</span></sc-if>
+                <sc-if value="{{ n.real }}"><span style="margin-left:auto;font-size:24px;font-weight:700;background:#0B5E5C;color:#fff;padding:4px 14px;border-radius:999px">real</span></sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const v1 = ['Groups of four', 'Match on shared topics', 'Mix work backgrounds', 'Late arrivals wait for the next round'];
+    const v2 = [
+      { rule: 'Groups of five', why: 'They were rated higher (1.4 against 0.9).', changed: true },
+      { rule: 'Match on shared topics', same: true },
+      { rule: 'Mix work backgrounds', same: true },
+      { rule: 'Late arrivals join an open group', why: 'Fewer people waited alone (3 against 9).', changed: true }
+    ];
+    const nums = tags => [['Joined', 15], ['Placed', 15], ['Rated', 12]].map(([label, value], i) => ({ label, value, test: tags[i] === 't', real: tags[i] === 'r' }));
+    const states = [
+      { id: '7a', label: 'After the improvement', after: true, nums: nums('ttt'), note: 'Changes highlighted in teal, each with its reason.' },
+      { id: '7b', label: 'Before the improvement', before: true, nums: nums('ttt'), note: 'Only version 1 so far.' },
+      { id: '7c', label: 'Mixed numbers', after: true, nums: nums('rrt'), note: 'Joined and Placed are real, Rated is test data.' }
+    ];
+    return { states, v1, v2 };
+  }
+}
+</script>
+</body>
+</html>

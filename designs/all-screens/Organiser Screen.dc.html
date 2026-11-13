@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#E9E4DA;font-family:'Atkinson Hyperlegible',sans-serif;color:#1E2626}
+a{color:#0B5E5C}a:hover{color:#084544}
+input::placeholder{color:#6A655D;opacity:1}
+@keyframes cu-spin{to{transform:rotate(360deg)}}
+</style>
+</helmet>
+<section style="padding:48px;display:flex;flex-direction:column;gap:32px">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="font-family:'Young Serif',serif;font-size:32px;color:#0B4F4D">Organiser screen · laptop, 1280 wide</div>
+    <div style="font-size:18px;color:#3B3832">Password page, then the round dashboard in each state.</div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:56px">
+    <sc-for list="{{ states }}" as="s" hint-placeholder-count="6">
+      <div id="{{ s.id }}" style="display:flex;flex-direction:column;gap:14px;width:1280px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:14px;font-weight:700;background:#0B5E5C;color:#fff;padding:3px 9px;border-radius:999px">{{ s.id }}</span>
+          <span style="font-size:20px;font-weight:700">{{ s.label }}</span>
+          <span style="font-size:17px;color:#3B3832">{{ s.note }}</span>
+        </div>
+        <div style="position:relative;width:1280px;border-radius:16px;overflow:hidden;background:#FAF6EF;box-shadow:0 20px 50px rgba(40,30,10,.22);border:1px solid #D6CFC2">
+          <div style="height:44px;background:#EDE7DC;display:flex;align-items:center;gap:8px;padding:0 16px;border-bottom:1px solid #D6CFC2">
+            <span style="width:12px;height:12px;border-radius:50%;background:#E0675A"></span>
+            <span style="width:12px;height:12px;border-radius:50%;background:#E8B04A"></span>
+            <span style="width:12px;height:12px;border-radius:50%;background:#62B567"></span>
+            <span style="margin-left:16px;flex:1;max-width:520px;height:28px;border-radius:8px;background:#FAF6EF;display:flex;align-items:center;padding:0 12px;font-size:14px;color:#3B3832">circleup.example/organiser</span>
+          </div>
+          <sc-if value="{{ s.login }}">
+            <div style="height:720px;display:flex;align-items:center;justify-content:center">
+              <div style="width:440px;background:#fff;border-radius:24px;padding:40px;display:flex;flex-direction:column;gap:24px;box-shadow:0 10px 30px rgba(40,30,10,.1)">
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <div style="font-size:18px;font-weight:700;color:#0B5E5C">Circle Up</div>
+                  <div style="font-family:'Young Serif',serif;font-size:40px;line-height:1.1;color:#0B4F4D">Organiser</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <label style="font-size:19px;font-weight:700">Password</label>
+                  <input readOnly="{{ true }}" type="password" placeholder="Organiser password" style="height:60px;box-sizing:border-box;width:100%;border-radius:14px;border:2px solid #CFC7BA;background:#FAF6EF;font-family:'Atkinson Hyperlegible',sans-serif;font-size:20px;padding:0 18px;outline:none">
+                </div>
+                <button style="height:60px;width:100%;border:none;border-radius:16px;background:#0B5E5C;color:#fff;font-family:'Atkinson Hyperlegible',sans-serif;font-size:21px;font-weight:700;cursor:pointer" style-hover="background:#094E4C">Enter</button>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ s.dash }}">
+            <div style="padding:32px 40px 48px;display:flex;flex-direction:column;gap:32px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+                <div style="display:flex;align-items:center;gap:14px">
+                  <span style="font-family:'Young Serif',serif;font-size:24px;color:#0B4F4D">Circle Up</span>
+                  <span style="font-size:20px">Founders Evening, Prague</span>
+                </div>
+                <span style="font-size:15px;font-weight:700;background:#F2DFA7;color:#4D3A00;padding:4px 12px;border-radius:999px">test data: all people below are made up</span>
+              </div>
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:32px;align-items:stretch">
+                <div style="background:#0B5E5C;color:#fff;border-radius:24px;padding:28px 32px;display:flex;align-items:center;gap:56px">
+                  <div style="display:flex;flex-direction:column;gap:4px">
+                    <span style="font-size:19px">Round</span>
+                    <span style="font-family:'Young Serif',serif;font-size:72px;line-height:1">{{ s.round }}</span>
+                  </div>
+                  <div style="width:2px;align-self:stretch;background:rgba(255,255,255,.3)"></div>
+                  <div style="display:flex;flex-direction:column;gap:4px">
+                    <span style="font-size:19px">Code</span>
+                    <span style="font-family:'Young Serif',serif;font-size:72px;line-height:1;letter-spacing:6px">4821</span>
+                  </div>
+                  <span style="align-self:flex-start;margin-left:auto;font-size:12px;font-weight:700;background:#F2DFA7;color:#4D3A00;padding:2px 8px;border-radius:999px">test data</span>
+                </div>
+                <div style="background:#fff;border-radius:24px;padding:20px;display:flex;gap:20px;align-items:center;box-shadow:0 1px 0 #E2DACD">
+                  <div style="width:132px;height:132px;border-radius:12px;border:2px dashed #9CC4BF;background:#F1F8F7;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#0B4F4D">QR code</div>
+                  <div style="display:flex;flex-direction:column;gap:8px;width:250px">
+                    <label style="font-size:16px;font-weight:700">Address phones use</label>
+                    <input readOnly="{{ true }}" value="circleup.example/join" style="height:48px;box-sizing:border-box;width:100%;border-radius:12px;border:2px solid #CFC7BA;background:#FAF6EF;font-family:'Atkinson Hyperlegible',sans-serif;font-size:18px;padding:0 12px;outline:none;color:#1E2626">
+                    <span style="align-self:flex-start;font-size:12px;font-weight:700;background:#F2DFA7;color:#4D3A00;padding:2px 8px;border-radius:999px">test data</span>
+                  </div>
+                </div>
+              </div>
+              <sc-if value="{{ s.error }}">
+                <div style="display:flex;align-items:center;gap:16px;background:#F8E1DC;color:#7E1D13;border-radius:18px;padding:16px 20px">
+                  <svg style="flex:none" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4M12 16h.01"></path></svg>
+                  <span style="flex:1;font-size:22px;font-weight:700">Model unreachable, groups formed by the basic split</span>
+                  <button style="height:52px;padding:0 24px;border:2px solid #A1271B;border-radius:14px;background:#fff;color:#A1271B;font-family:'Atkinson Hyperlegible',sans-serif;font-size:19px;font-weight:700;cursor:pointer" style-hover="background:#FCEFEC">Try again</button>
+                </div>
+              </sc-if>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;align-items:center;gap:12px">
+                  <span style="font-size:22px;font-weight:700">Steps</span>
+                  <sc-if value="{{ s.stepHint }}"><span style="font-size:18px">{{ s.stepHint }}</span></sc-if>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px">
+                  <sc-for list="{{ s.steps }}" as="b" hint-placeholder-count="6">
+                    <sc-if value="{{ b.done }}">
+                      <div style="min-height:76px;border-radius:16px;background:#E3F0EE;color:#0B4F4D;padding:10px 14px;display:flex;flex-direction:column;justify-content:center;gap:2px;box-sizing:border-box">
+                        <span style="display:flex;align-items:center;gap:6px;font-size:15px;font-weight:700"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>{{ b.n }} · Done</span>
+                        <span style="font-size:18px;font-weight:700;line-height:1.2">{{ b.label }}</span>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ b.current }}">
+                      <button style="min-height:76px;border:none;border-radius:16px;background:#0B5E5C;color:#fff;padding:10px 14px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:2px;font-family:'Atkinson Hyperlegible',sans-serif;cursor:pointer;text-align:left" style-hover="background:#094E4C">
+                        <span style="font-size:15px;font-weight:700">{{ b.n }} · Next</span>
+                        <span style="font-size:18px;font-weight:700;line-height:1.2">{{ b.label }}</span>
+                      </button>
+                    </sc-if>
+                    <sc-if value="{{ b.idle }}">
+                      <button style="min-height:76px;border:2px solid #9CC4BF;border-radius:16px;background:#fff;color:#1E2626;padding:10px 14px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:2px;font-family:'Atkinson Hyperlegible',sans-serif;cursor:pointer;text-align:left" style-hover="background:#F1F8F7">
+                        <span style="font-size:15px;font-weight:700;color:#0B4F4D">{{ b.n }}</span>
+                        <span style="font-size:18px;font-weight:700;line-height:1.2">{{ b.label }}</span>
+                      </button>
+                    </sc-if>
+                    <sc-if value="{{ b.off }}">
+                      <div style="min-height:76px;border-radius:16px;background:#ECE7DE;color:#5E5A53;padding:10px 14px;display:flex;flex-direction:column;justify-content:center;gap:2px;box-sizing:border-box">
+                        <span style="font-size:15px;font-weight:700">{{ b.n }}</span>
+                        <span style="font-size:18px;font-weight:700;line-height:1.2">{{ b.label }}</span>
+                      </div>
+                    </sc-if>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px">
+                <div style="background:#fff;border-radius:24px;padding:24px 28px;display:flex;flex-direction:column;gap:16px;box-shadow:0 1px 0 #E2DACD">
+                  <div style="display:flex;align-items:center;justify-content:space-between">
+                    <div style="display:flex;align-items:baseline;gap:10px">
+                      <span style="font-family:'Young Serif',serif;font-size:44px;line-height:1;color:#0B4F4D">{{ s.count }}</span>
+                      <span style="font-size:22px;font-weight:700">joined</span>
+                    </div>
+                    <span style="display:flex;align-items:center;gap:8px;font-size:17px;font-weight:700;color:#0B4F4D"><span style="width:10px;height:10px;border-radius:50%;background:#0B5E5C"></span>Live</span>
+                  </div>
+                  <sc-if value="{{ s.noPeople }}">
+                    <div style="font-size:20px;line-height:1.4;padding:20px;background:#F1F8F7;border-radius:16px">Nobody yet. Names appear here as phones join.</div>
+                  </sc-if>
+                  <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 16px">
+                    <sc-for list="{{ s.people }}" as="p" hint-placeholder-count="12">
+                      <div style="font-size:20px;padding:8px 0;border-bottom:1px solid #EDE6DA">{{ p }}</div>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="background:#fff;border-radius:24px;padding:24px 28px;display:flex;flex-direction:column;gap:14px;box-shadow:0 1px 0 #E2DACD">
+                  <div style="display:flex;align-items:center;justify-content:space-between">
+                    <span style="font-size:22px;font-weight:700">Meeting spots</span>
+                    <span style="font-size:12px;font-weight:700;background:#F2DFA7;color:#4D3A00;padding:2px 8px;border-radius:999px">test data</span>
+                  </div>
+                  <sc-for list="{{ spots }}" as="sp" hint-placeholder-count="3">
+                    <div style="display:grid;grid-template-columns:200px minmax(0,1fr);gap:10px">
+                      <input readOnly="{{ true }}" value="{{ sp.name }}" style="height:52px;box-sizing:border-box;border-radius:12px;border:2px solid #CFC7BA;background:#FAF6EF;font-family:'Atkinson Hyperlegible',sans-serif;font-size:19px;font-weight:700;padding:0 14px;outline:none;color:#1E2626">
+                      <input readOnly="{{ true }}" value="{{ sp.desc }}" style="height:52px;box-sizing:border-box;border-radius:12px;border:2px solid #CFC7BA;background:#FAF6EF;font-family:'Atkinson Hyperlegible',sans-serif;font-size:19px;padding:0 14px;outline:none;color:#1E2626">
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+                  <span style="font-size:26px;font-weight:700">Groups by meeting spot</span>
+                  <div style="display:flex;align-items:center;gap:16px">
+                    <sc-if value="{{ s.avg }}"><span style="font-size:22px;font-weight:700;background:#E3F0EE;color:#0B4F4D;padding:8px 16px;border-radius:999px">Average worth {{ s.avg }}</span></sc-if>
+                    <span style="font-size:19px;font-weight:700">{{ s.rulesLabel }}</span>
+                  </div>
+                </div>
+                <sc-if value="{{ s.forming }}">
+                  <div style="height:200px;border-radius:24px;background:#F1F8F7;border:2px dashed #9CC4BF;display:flex;align-items:center;justify-content:center;gap:16px;font-size:24px;font-weight:700;color:#0B4F4D">
+                    {{ spinner }}
+                    Forming groups, this can take 30 seconds.
+                  </div>
+                </sc-if>
+                <sc-if value="{{ s.noGroups }}">
+                  <div style="padding:28px;border-radius:24px;background:#F1F8F7;font-size:20px">Groups appear here after Form groups.</div>
+                </sc-if>
+                <sc-if value="{{ s.hasGroups }}">
+                  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px">
+                    <sc-for list="{{ s.groups }}" as="g" hint-placeholder-count="3">
+                      <div style="background:#fff;border-radius:24px;padding:22px 24px;display:flex;flex-direction:column;gap:14px;box-shadow:0 1px 0 #E2DACD">
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                          <span style="display:flex;align-items:center;gap:8px;font-family:'Young Serif',serif;font-size:24px;color:#0B4F4D">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 5-8 12-8 12s-8-7-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>{{ g.spot }}
+                          </span>
+                          <span style="font-size:12px;font-weight:700;background:#F2DFA7;color:#4D3A00;padding:2px 8px;border-radius:999px">test data</span>
+                        </div>
+                        <div style="font-size:21px;line-height:1.4">{{ g.names }}</div>
+                        <div style="font-size:18px;font-weight:700">{{ g.arrived }}</div>
+                        <sc-if value="{{ g.tally }}">
+                          <div style="border-top:2px solid #EDE6DA;padding-top:12px;display:flex;flex-direction:column;gap:4px">
+                            <span style="font-size:19px">{{ g.tally }}</span>
+                            <span style="font-size:20px;font-weight:700;color:#0B4F4D">Average {{ g.avg }}</span>
+                          </div>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+              <sc-if value="{{ s.rules }}">
+                <div style="background:#fff;border-radius:24px;padding:28px;display:flex;flex-direction:column;gap:20px;box-shadow:0 1px 0 #E2DACD">
+                  <div style="display:flex;align-items:center;justify-content:space-between">
+                    <span style="font-size:26px;font-weight:700">Grouping rules</span>
+                    <span style="font-size:12px;font-weight:700;background:#F2DFA7;color:#4D3A00;padding:2px 8px;border-radius:999px">test data</span>
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px">
+                    <sc-for list="{{ rules }}" as="rv" hint-placeholder-count="2">
+                      <div style="border-radius:18px;background:#FAF6EF;padding:20px 22px;display:flex;flex-direction:column;gap:10px">
+                        <span style="font-family:'Young Serif',serif;font-size:24px;color:#0B4F4D">{{ rv.title }}</span>
+                        <sc-for list="{{ rv.items }}" as="it" hint-placeholder-count="3">
+                          <div style="display:flex;justify-content:space-between;gap:12px;font-size:19px;padding:6px 0;border-bottom:1px solid #E2DACD"><span>{{ it.k }}</span><span style="font-weight:700">{{ it.v }}</span></div>
+                        </sc-for>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:10px">
+                    <span style="font-size:20px;font-weight:700">What changed and why</span>
+                    <sc-for list="{{ changes }}" as="c" hint-placeholder-count="2">
+                      <div style="font-size:20px;line-height:1.4;padding:12px 16px;background:#F1F8F7;border-radius:14px"><strong>{{ c.what }}:</strong> {{ c.why }}</div>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+              <div style="display:flex;justify-content:flex-end;gap:12px;border-top:1px solid #E2DACD;padding-top:24px">
+                <button style="height:52px;padding:0 22px;border:2px solid #CFC7BA;border-radius:14px;background:#fff;color:#1E2626;font-family:'Atkinson Hyperlegible',sans-serif;font-size:18px;font-weight:700;cursor:pointer" style-hover="background:#EFE9DE">Download event backup</button>
+                <button style="height:52px;padding:0 22px;border:none;border-radius:14px;background:#A1271B;color:#fff;font-family:'Atkinson Hyperlegible',sans-serif;font-size:18px;font-weight:700;cursor:pointer" style-hover="background:#861F15">End event and delete everything</button>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ s.confirm }}">
+            <div style="position:absolute;inset:44px 0 0;background:rgba(20,26,26,.5);display:flex;align-items:center;justify-content:center">
+              <div style="width:520px;background:#FAF6EF;border-radius:24px;padding:36px;display:flex;flex-direction:column;gap:20px">
+                <div style="font-family:'Young Serif',serif;font-size:34px;line-height:1.15;color:#7E1D13">End the event and delete everything?</div>
+                <div style="font-size:20px;line-height:1.45">Every name, topic, group and rating is deleted. Phones show that the event has ended. This cannot be undone.</div>
+                <div style="display:flex;flex-direction:column;gap:12px">
+                  <button style="height:60px;width:100%;border:none;border-radius:16px;background:#0B5E5C;color:#fff;font-family:'Atkinson Hyperlegible',sans-serif;font-size:20px;font-weight:700;cursor:pointer" style-hover="background:#094E4C">Keep the event</button>
+                  <button style="height:60px;width:100%;border:2px solid #A1271B;border-radius:16px;background:#fff;color:#A1271B;font-family:'Atkinson Hyperlegible',sans-serif;font-size:20px;font-weight:700;cursor:pointer" style-hover="background:#F8E1DC">End and delete</button>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const labels = ['Lock round', 'Form groups', 'Start round', 'Ask for ratings', 'Improve the rules', 'End round and start the next'];
+    const steps = codes => labels.map((label, i) => ({ n: i + 1, label, done: codes[i] === 'd', current: codes[i] === 'c', idle: codes[i] === 'i', off: codes[i] === 'o' }));
+    const people = ['Maya', 'Priya', 'Tomas', 'Lena', 'Jonas', 'Elif', 'Marek', 'Sofia', 'Daniel', 'Aiko', 'Filip', 'Nora'];
+    const groups = [
+      { spot: 'Green sofa', names: 'Maya, Priya, Tomas, Lena', arrived: '3 of 4 arrived' },
+      { spot: 'Window table', names: 'Jonas, Elif, Marek, Sofia', arrived: '4 of 4 arrived' },
+      { spot: 'Bar corner', names: 'Daniel, Aiko, Filip, Nora', arrived: '2 of 4 arrived' }
+    ];
+    const tallies = [
+      { tally: 'Yes 3, Somewhat 1, No 0', avg: '0.9' },
+      { tally: 'Yes 2, Somewhat 1, No 1', avg: '0.6' },
+      { tally: 'Yes 3, Somewhat 1, No 0', avg: '0.9' }
+    ];
+    const rated = groups.map((g, i) => ({ ...g, arrived: '4 of 4 arrived', ...tallies[i] }));
+    const dash = { dash: true, round: 1 };
+    const states = [
+      { id: '6a', label: 'Logged out', login: true, note: 'Password card only.' },
+      { id: '6b', label: 'Empty', ...dash, count: 0, noPeople: true, people: [], steps: steps('oooooo'), stepHint: 'Buttons unlock once people join.', noGroups: true, rulesLabel: 'Rules version 1', note: 'Round 1, nobody joined yet.' },
+      { id: '6c', label: 'Forming groups', ...dash, count: 12, people, steps: steps('dooooo'), forming: true, rulesLabel: 'Rules version 1', note: 'All step buttons disabled until groups are ready.' },
+      { id: '6d', label: 'After the round', ...dash, count: 12, people, steps: steps('ddddci'), hasGroups: true, groups: rated, avg: '0.8', rules: true, rulesLabel: 'Rules version 1', note: 'Ratings are in, so Improve the rules is active. Totals only.' },
+      { id: '6e', label: 'Error', ...dash, count: 12, people, steps: steps('ddcooo'), error: true, hasGroups: true, groups, rulesLabel: 'Basic split', note: 'The model did not answer. Groups were formed by the basic split.' },
+      { id: '6f', label: 'End event: confirm', ...dash, count: 12, people, steps: steps('ddddci'), hasGroups: true, groups: rated, avg: '0.8', rules: true, rulesLabel: 'Rules version 1', confirm: true, note: 'Shown after tapping End event and delete everything.' }
+    ];
+    const spots = [
+      { name: 'Green sofa', desc: 'By the window, next to the coffee table' },
+      { name: 'Window table', desc: 'The long table under the big window' },
+      { name: 'Bar corner', desc: 'Left end of the bar, by the plants' }
+    ];
+    const rules = [
+      { title: 'Rules version 1', items: [{ k: 'Group size', v: '4' }, { k: 'Shared themes needed', v: '2' }, { k: 'Mix of fields', v: 'Same field' }] },
+      { title: 'Rules version 2', items: [{ k: 'Group size', v: '5' }, { k: 'Shared themes needed', v: '1' }, { k: 'Mix of fields', v: 'Mixed fields' }] }
+    ];
+    const changes = [
+      { what: 'Group size 4 to 5', why: 'groups of five rated higher (average 1.4 against 0.9).' },
+      { what: 'Shared themes 2 to 1', why: 'groups with one strong shared theme rated as well as groups with two.' },
+      { what: 'Same field to mixed fields', why: 'people rated groups with other fields higher (average 1.2 against 0.8).' }
+    ];
+    const spinner = React.createElement('span', { style: { width: 28, height: 28, borderRadius: '50%', border: '4px solid #9CC4BF', borderTopColor: '#0B5E5C', animation: 'cu-spin 0.9s linear infinite', display: 'inline-block' } });
+    return { states, spots, rules, changes, spinner };
+  }
+}
+</script>
+</body>
+</html>

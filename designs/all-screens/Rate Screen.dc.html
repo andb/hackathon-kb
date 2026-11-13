@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#E9E4DA;font-family:'Atkinson Hyperlegible',sans-serif;color:#1E2626}
+a{color:#0B5E5C}a:hover{color:#084544}
+</style>
+</helmet>
+<section style="padding:48px;display:flex;flex-direction:column;gap:32px">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="font-family:'Young Serif',serif;font-size:32px;color:#0B4F4D">Rate screen · Variant A</div>
+    <div style="font-size:18px;color:#3B3832">Its own screen, shown right after a round ends.</div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:48px;align-items:flex-start">
+    <sc-for list="{{ states }}" as="s" hint-placeholder-count="3">
+      <div id="{{ s.id }}" style="display:flex;flex-direction:column;gap:14px;width:399px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:14px;font-weight:700;background:#0B5E5C;color:#fff;padding:3px 9px;border-radius:999px">{{ s.id }}</span>
+          <span style="font-size:20px;font-weight:700">{{ s.label }}</span>
+        </div>
+        <div style="background:#1C1C1C;padding:12px;border-radius:56px;box-shadow:0 20px 50px rgba(40,30,10,.25)">
+          <div style="width:375px;height:812px;border-radius:44px;overflow:hidden;background:#FAF6EF;display:flex;flex-direction:column">
+            <div style="height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 28px;font-size:15px;font-weight:700">
+              <span>9:41</span><span style="width:26px;height:12px;border:2px solid #1E2626;border-radius:4px"></span>
+            </div>
+            <div style="flex:1;overflow-y:auto;padding:12px 20px 24px;display:flex;flex-direction:column;gap:24px">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="font-family:'Young Serif',serif;font-size:40px;line-height:1.1;color:#0B4F4D">Rate round 2</div>
+                <div style="display:flex;align-items:flex-start;gap:8px;justify-content:space-between">
+                  <span style="font-size:18px;line-height:1.35">Early-stage fintech, Hiring first employees</span>
+                  <span style="flex:none;font-size:12px;font-weight:700;background:#F2DFA7;color:#4D3A00;padding:2px 8px;border-radius:999px">test data</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:17px;font-weight:700;color:#0B4F4D">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                  Private. Nobody sees your answers.
+                </div>
+              </div>
+              <div style="background:#E3F0EE;border-radius:20px;padding:18px 16px;display:flex;flex-direction:column;gap:14px">
+                <div style="font-size:21px;font-weight:700;line-height:1.3">Was this group worth your time?</div>
+                <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+                  <sc-for list="{{ s.groupOpts }}" as="o" hint-placeholder-count="3">
+                    <sc-if value="{{ o.sel }}">
+                      <div style="height:56px;border-radius:14px;background:#0B5E5C;color:#fff;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>{{ o.label }}
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ o.open }}">
+                      <button style="height:56px;border-radius:14px;background:#fff;border:2px solid #9CC4BF;color:#1E2626;font-family:'Atkinson Hyperlegible',sans-serif;font-size:18px;font-weight:700;cursor:pointer" style-hover="background:#F1F8F7">{{ o.label }}</button>
+                    </sc-if>
+                    <sc-if value="{{ o.locked }}">
+                      <div style="height:56px;border-radius:14px;border:2px solid transparent;color:#5E5A53;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center">{{ o.label }}</div>
+                    </sc-if>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span style="font-size:21px;font-weight:700">Would you talk to them again?</span>
+                </div>
+                <sc-for list="{{ s.people }}" as="p" hint-placeholder-count="3">
+                  <div style="background:#fff;border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 1px 0 #E2DACD">
+                    <div style="display:flex;align-items:center;gap:10px">
+                      <span style="width:40px;height:40px;border-radius:50%;background:#E3F0EE;color:#0B4F4D;display:flex;align-items:center;justify-content:center;font-family:'Young Serif',serif;font-size:20px">{{ p.initial }}</span>
+                      <span style="flex:1;font-size:21px;font-weight:700">{{ p.name }}</span>
+                      <span style="font-size:12px;font-weight:700;background:#F2DFA7;color:#4D3A00;padding:2px 8px;border-radius:999px">test data</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+                      <sc-for list="{{ p.opts }}" as="o" hint-placeholder-count="3">
+                        <sc-if value="{{ o.sel }}">
+                          <div style="height:52px;border-radius:14px;background:#0B5E5C;color:#fff;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>{{ o.label }}
+                          </div>
+                        </sc-if>
+                        <sc-if value="{{ o.open }}">
+                          <button style="height:52px;border-radius:14px;background:#FAF6EF;border:2px solid #CFC7BA;color:#1E2626;font-family:'Atkinson Hyperlegible',sans-serif;font-size:18px;font-weight:700;cursor:pointer" style-hover="background:#F1F8F7;border-color:#9CC4BF">{{ o.label }}</button>
+                        </sc-if>
+                        <sc-if value="{{ o.locked }}">
+                          <div style="height:52px;border-radius:14px;border:2px solid transparent;color:#5E5A53;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center">{{ o.label }}</div>
+                        </sc-if>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="flex:none;border-top:1px solid #E2DACD;background:#FAF6EF;padding:14px 20px 30px;display:flex;flex-direction:column;gap:12px">
+              <sc-if value="{{ s.notDone }}">
+                <div style="font-size:17px;line-height:1.35">{{ s.left }}</div>
+                <div style="height:58px;border-radius:16px;background:#CFC9BF;color:#3B3832;font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center">Done</div>
+              </sc-if>
+              <sc-if value="{{ s.done }}">
+                <div style="display:flex;align-items:center;gap:10px;font-family:'Young Serif',serif;font-size:22px;line-height:1.3;color:#0B4F4D">
+                  <svg style="flex:none" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+                  Thanks, your answers are private.
+                </div>
+                <button style="height:58px;width:100%;border:none;border-radius:16px;background:#0B5E5C;color:#fff;font-family:'Atkinson Hyperlegible',sans-serif;font-size:20px;font-weight:700;cursor:pointer" style-hover="background:#094E4C">Stay for the next round</button>
+                <div style="font-size:17px;line-height:1.4;color:#2F2C27;text-wrap:pretty">If you don't tap it, you leave at the end of this round and what you typed is deleted.</div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:16px;line-height:1.4;color:#3B3832;text-wrap:pretty">{{ s.note }}</div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const opts = (labels, pick) => labels.map(l => ({ label: l, sel: pick === l, open: !pick, locked: !!pick && pick !== l }));
+    const names = ['Priya', 'Tomas', 'Lena'];
+    const build = (id, label, g, picks, note) => {
+      const people = names.map((n, i) => ({ name: n, initial: n[0], opts: opts(['Yes', 'Maybe', 'No'], picks[i]) }));
+      const remaining = (g ? 0 : 1) + picks.filter(p => !p).length;
+      return { id, label, note, groupOpts: opts(['Yes', 'Somewhat', 'No'], g), people,
+        done: remaining === 0, notDone: remaining > 0,
+        left: remaining === 1 ? '1 answer left.' : remaining + ' answers left.' };
+    };
+    const states = [
+      build('4a', 'Nothing rated yet', null, [null, null, null], 'Done stays greyed until every answer is in.'),
+      build('4b', 'Partly rated', 'Yes', ['Maybe', null, null], 'Tapped answers get a tick and lock. The other choices fade.'),
+      build('4c', 'All rated', 'Somewhat', ['Maybe', 'Yes', 'Yes'], 'Shown after Done. Stay is the only main button.')
+    ];
+    return { states };
+  }
+}
+</script>
+</body>
+</html>
