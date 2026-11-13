@@ -1,4 +1,4 @@
-# Circle Up screens specification, 2026-11-13 13:32
+# Circle Up screens specification, 2026-11-13, created 13:32, last updated 13:42
 
 Sources, in authority order: the accepted teammate brief (`private/reports/channel/2026-11-13-1245-teammate-brief-design.md`, called "the brief"), the build plan (`kit/idea-group-matching.md`, called "the plan", with prompts A, B, B2, C and D), and the builder prompts (`kit/prompts.md`). Where the brief and the plan describe the same thing differently, the line starts with `CONFLICT:` and gives both; nothing here resolves one. "Plan only" and "brief only" mark an element only one source has. Your own `[[ ]]` notes in `kit/intent-group-matching.md` are quoted inside open questions only; the replies there are unreviewed and are not used here.
 
