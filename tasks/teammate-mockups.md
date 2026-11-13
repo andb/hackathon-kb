@@ -1,4 +1,4 @@
-# Your task: phone mock-ups in Claude Design, created 14:00, last updated 14:03
+# Your task: phone mock-ups in Claude Design, created 14:00, last updated 14:55
 
 Hi! This is your task for the next hour, and also where you write your feedback: edit this file on GitHub (the pencil icon at the top right), write under each "Your feedback" heading, and press "Commit changes". Andrew and his agents read it from here.
 
@@ -19,7 +19,7 @@ Your feedback:
 
 ## 1. Join
 
-Link or screenshot:
+Link or screenshot: [designs/join-screen.png](../designs/join-screen.png) (picture), [designs/join-screen.html](../designs/join-screen.html) (the full design file; download it and open it in a browser), added 14:55 from Andrew's download
 
 Your feedback:
 
