@@ -29,7 +29,7 @@ Sources, in authority order: the accepted teammate brief (`private/reports/chann
   - Event code field, typed, or already filled from a scanned QR code (brief). The plan's QR on `/organiser` encodes the join address only, with no code in it.
   - CONFLICT: name field. Brief: "your first name". Plan: "alias".
   - CONFLICT: what you bring. Brief: one line, "what you would like to talk about". Plan: four fields, topic, offer, need, and a preference with three choices (help, peers, exploration).
-  - CONFLICT: LinkedIn. Brief: an optional LinkedIn address field. Plan: no such field; the only profile input is prompt D's optional prefill, where linkedin.com is listed but disabled.
+  - DECIDED 13:38 (Andrew): optional LinkedIn address field, labelled as shown to the people in your groups; it appears only when someone taps that person (see My evening).
   - Prefill field and button "Paste the address of your own public profile or personal site to prefill" (plan only, prompt D, optional), with two more notice lines.
   - One submit button (brief and plan agree; label not fixed by either).
 - Actions:
@@ -96,7 +96,7 @@ Sources, in authority order: the accepted teammate brief (`private/reports/chann
 - Route: a state of `/join` (plan, prompt B2).
 - Shows, top to bottom:
   - "Was this group worth your time?" with yes, somewhat, no (brief and plan agree; stored as 2, 1, 0).
-  - CONFLICT: talk again. Brief: one tap per person met, "Would you talk to them again?". Plan: one question about the group, "Would you talk to one of them again?" (yes, no), stored against the round and group number only, "never against the person".
+  - DECIDED 13:38 (Andrew): feedback is per group and per person, given on My evening (see section 5). Each rating is private: nobody ever sees how they were rated. The join notice changes to match.
   - Button "Stay for the next round" after rating (plan only).
 - Actions:
   - Each tap records its answer; a second rating by the same person in the same round is refused (plan).
@@ -111,18 +111,22 @@ Sources, in authority order: the accepted teammate brief (`private/reports/chann
 
 ## 5. My evening
 
-- Purpose: each person keeps a record of the evening: each round, who they met, the themes, and the LinkedIn link of people they both want to stay in touch with (brief).
+Decided 13:38 by Andrew, his words: "I don't want to show the LinkedIn links between two people, but in the My Evening, I want the screen to be feedback about the group and per person. If you want to have the link, clicking on the person could give that information."
+
+- Purpose: where each person gives their feedback: per round, one rating for the group and one for each person in it.
 - Route: not in the plan yet.
 - Shows, top to bottom:
-  - One block per round the person was in: round number, the group's members' names, the themes (brief). Source in memory for the current round only; see conflicts below.
-  - For each person met where both tapped "would talk again": their LinkedIn link (brief). No source in the plan: it collects no LinkedIn address and no per-person tap.
-- Actions: open a LinkedIn link (brief). Nothing else specified.
+  - One block per round the person was in: round number, the group's members' first names, the themes.
+  - Under the group: the group rating (yes, somewhat, no), then one row per member with their rating tap.
+- Actions:
+  - Rate the group; rate each person. A rating can be given once per round.
+  - Tap a person's name: shows what they entered when joining, including their LinkedIn address if they gave one.
 - States:
-  - Empty: before the first round is revealed, nothing to show (wording not specified).
-  - CONFLICT: earlier rounds. Brief: every round you were in. Plan: participants who leave at a round's end have their text deleted at that moment, and "End event and delete everything" deletes every group's text, so earlier rounds cannot be shown after either.
+  - Empty: before the first round is revealed, "Your groups will appear here."
+  - Earlier rounds stay until the event ends, so they can still be rated and viewed (replaces the plan's deletion at round end).
   - Error: memory is lost on restart, so the record is lost with it (plan's single-process memory).
-- Never shows: anyone's LinkedIn unless both people tapped yes for each other (brief); how anyone was rated.
-- Build stage: not in the plan yet; not in any prompt, so not in the 18:00 cut unless you add it.
+- Never shows: how anyone was rated, a list of LinkedIn links, anyone's location.
+- Build stage: in no builder prompt yet; to be added. First screen cut if time runs short.
 
 ## 6. Organiser
 
@@ -185,10 +189,10 @@ Sources, in authority order: the accepted teammate brief (`private/reports/chann
 9. Keep the "I'm here" button (your note: "I don't see the value"): keep or drop?
 10. Keep the opening question on Your group: yes or no?
 11. Keep Withdraw on the phone: yes or no?
-12. "Talk again" tap: per person (brief) or per group (plan)?
+12. "Talk again" tap: DECIDED, per person and per group, on My evening.
 13. Keep "Stay for the next round" after rating: yes or no?
 14. Build My evening for 18:00: yes or no?
-15. My evening keeps earlier rounds for people who leave (the plan deletes their text at round end): yes or no?
+15. My evening keeps earlier rounds: DECIDED, yes, until the event ends.
 16. Start button label: "Start round" or "Publish"?
 17. Round 1 opens at: 15:15 or 15:30?
 18. Projector content: brief (rules and numbers) or plan (organiser screen beside two phones)?
