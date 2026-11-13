@@ -1,4 +1,4 @@
-# Circle Up screens specification, 2026-11-13, created 13:32, last updated 13:42
+# Circle Up screens specification, 2026-11-13, created 13:32, last updated 14:03
 
 Sources, in authority order: the accepted teammate brief (`private/reports/channel/2026-11-13-1245-teammate-brief-design.md`, called "the brief"), the build plan (`kit/idea-group-matching.md`, called "the plan", with prompts A, B, B2, C and D), and the builder prompts (`kit/prompts.md`). Where the brief and the plan describe the same thing differently, the line starts with `CONFLICT:` and gives both; nothing here resolves one. "Plan only" and "brief only" mark an element only one source has. Your own `[[ ]]` notes in `kit/intent-group-matching.md` are quoted inside open questions only; the replies there are unreviewed and are not used here.
 
@@ -27,8 +27,8 @@ Sources, in authority order: the accepted teammate brief (`private/reports/chann
   - Event name (brief only: the plan's event has a four-digit code and three spots but no name, so there is no source for it yet).
   - The plan's four-line notice above the form (plan only): "What you type is sent to Featherless, an AI inference provider, to form groups." "Your group sees your alias and nothing else you typed." "Your text is deleted when you leave a round or the organiser ends the event; the organiser may download a backup and deletes that file after the event." "Ratings are stored without your name or alias and their counts are sent to PostHog, an analytics service."
   - Event code field, typed, or already filled from a scanned QR code (brief). The plan's QR on `/organiser` encodes the join address only, with no code in it.
-  - CONFLICT: name field. Brief: "your first name". Plan: "alias".
-  - CONFLICT: what you bring. Brief: one line, "what you would like to talk about". Plan: four fields, topic, offer, need, and a preference with three choices (help, peers, exploration).
+  - CONFLICT: name field. Brief: "your first name". Plan: "alias". DECIDED 14:03 (Andrew): full name and optional profile addresses (LinkedIn, GitHub, personal site), plus one line on what to talk about.
+  - CONFLICT: what you bring. Brief: one line, "what you would like to talk about". Plan: four fields, topic, offer, need, and a preference with three choices (help, peers, exploration). DECIDED 14:03 (Andrew): full name and optional profile addresses (LinkedIn, GitHub, personal site), plus one line on what to talk about.
   - DECIDED 13:38 (Andrew): optional LinkedIn address field, labelled as shown to the people in your groups; it appears only when someone taps that person (see My evening).
   - Prefill field and button "Paste the address of your own public profile or personal site to prefill" (plan only, prompt D, optional), with two more notice lines.
   - One submit button (brief and plan agree; label not fixed by either).
@@ -94,6 +94,7 @@ Sources, in authority order: the accepted teammate brief (`private/reports/chann
 
 - Purpose: a few private taps after each round, which feed the agent's rewrite of its rules (brief and plan agree this is never cut).
 - Route: a state of `/join` (plan, prompt B2).
+- DECIDED 14:03 (Andrew): mock up both variants, Rate as its own screen and Rate only inside My evening, then choose.
 - Shows, top to bottom:
   - "Was this group worth your time?" with yes, somewhat, no (brief and plan agree; stored as 2, 1, 0).
   - DECIDED 13:38 (Andrew): feedback is per group and per person, given on My evening (see section 5). Each rating is private: nobody ever sees how they were rated. The join notice changes to match.

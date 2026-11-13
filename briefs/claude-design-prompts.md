@@ -1,4 +1,4 @@
-# Circle Up: prompts for Claude Design, created 13:59
+# Circle Up: prompts for Claude Design, created 13:59, last updated 14:03
 
 ## How to use
 
@@ -7,7 +7,7 @@
 3. When a screen looks right, share the result link with Andrew.
 4. Mark anything that feels wrong, confusing or hard to tap, in the chat or in a note to Andrew.
 
-The Rate screen is folded into My evening (prompt 4): feedback on the group and on each person is given there, so there is no separate Rate prompt.
+Rate comes in two variants, to make both and compare: Variant A has Rate as its own screen (prompt 4A, with a shorter My evening), Variant B has rating only inside My evening (prompt 4B). Make both, label each with its variant letter, and share both links.
 
 ## Prompt 0: shared style and rules (paste first)
 
@@ -35,10 +35,10 @@ Elements, top to bottom:
 1. App title "Circle Up" in the heading font, with a one-line promise under it: "Small groups, so nobody stands alone."
 2. Event name, for example "Founders Evening, Prague" (test data).
 3. Event code field: a short four-digit code, for example 4821 (test data), typed in a large field. Show a second frame where the code is already filled in because the person scanned a QR code.
-4. Name field, labelled "Your first name", for example "Maya" (test data).
+4. Full name field, labelled "Your full name (required)", for example "Maya Novak" (test data).
 5. One-line field, labelled "What would you like to talk about?", for example "How small teams decide what to build next" (test data). Maximum 140 characters, show a small character counter.
-6. Optional field, labelled "LinkedIn address (optional)", with a helper line: "Shown to the people in your groups, only when they tap your name."
-7. A short privacy note above the button: "What you type is used only to form your groups. Your group sees your first name. Nobody ever sees how they were rated." (to confirm)
+6. Optional profile addresses, labelled "Profile addresses (optional)": one field each for LinkedIn, GitHub and personal site, or one field with an "Add another" link (show whichever is clearer), with a helper line: "These help the app find themes you share with your group. Others see them only when they tap your name."
+7. A short privacy note above the button: "What you type is used only to form your groups. Nobody ever sees how they were rated." (to confirm)
 8. One big full-width button: "Join".
 
 Taps:
@@ -46,6 +46,7 @@ Taps:
 
 States to show:
 - Empty: the form with all fields blank.
+- Missing name: tapping Join with the full name blank shows "Please enter your full name" under that field.
 - Code from QR: the code field filled in.
 - Loading: the button greyed out and reading "Joining...".
 - Error: a wrong code shows "Check the code on the screen" under the code field; too many tries shows "Too many joins, try again in a minute".
@@ -103,7 +104,52 @@ States to show:
 - Never show anyone's location, how anyone was rated, or anything the members typed beyond the themes.
 ```
 
-## Prompt 4: My evening (feedback on the group and on each person)
+## Prompt 4A: Variant A, Rate is its own screen
+
+Make prompts 4A (two screens) and 4B as separate designs so they can be compared. Variant A needs both the Rate screen and the shorter My evening below.
+
+```text
+Design the Rate screen of Circle Up (phone, same style and rules as before). This is Variant A: rating has its own screen, shown right after a round.
+
+Purpose: right after a round ends, the person gives private feedback in a few taps: one for the group, then one for each person. Nobody ever sees how they were rated.
+
+Elements, top to bottom:
+1. Headline "Rate round 2" and a small line with the round's themes, for example "Early-stage fintech, Hiring first employees" (test data).
+2. Group rating: the question "Was this group worth your time?" with three big buttons side by side: "Yes", "Somewhat", "No". One tap.
+3. Under it, one row per group member with the first name, for example Priya, Tomas, Lena (test data). Each row has the question "Would you talk to them again?" and three thumb-sized buttons: "Yes", "Maybe", "No". One tap per person.
+4. A big button "Done" once everything is rated, then "Stay for the next round" with the small line "If you don't tap it, you leave at the end of this round and what you typed is deleted."
+
+Taps:
+- Each tap records the answer, highlights it with a small tick and locks it (one rating per round).
+
+States to show:
+- Nothing rated yet.
+- Partly rated: group rated, one person rated, two still open.
+- All rated: thank-you line "Thanks, your answers are private." and the stay button.
+- Never show how anyone was rated, anyone's location, or what anyone typed.
+```
+
+Variant A also needs this shorter My evening screen:
+
+```text
+Design the My evening screen of Circle Up (phone, same style and rules as before). In this variant there is no rating here: ratings are on the separate Rate screen.
+
+Purpose: a personal record of the evening: the rounds, the people and the themes.
+
+Elements, top to bottom:
+1. Headline "My evening" and a small line "Tap a name to see what they shared."
+2. One card per round the person was in, newest first. Show two rounds, round 2 and round 1 (test data). In each card: the round number, the themes of that group, for example "Round 2 - Early-stage fintech, Hiring first employees" (test data), and the members' first names as rows, for example Priya, Tomas, Lena (test data). No rating buttons.
+3. Tapping a person's name opens a small sheet from the bottom showing what that person entered when joining: their full name, their one-line topic, and their profile addresses (LinkedIn, GitHub, personal site) as tappable links for those they gave, for example "linkedin.com/in/priya-test (test data)". If they gave none, it says "No profile addresses shared". The sheet has a "Close" button. Never show a list of everyone's links on the main screen.
+4. If a round is not rated yet, a quiet link "Rate round 2" that opens the Rate screen.
+
+States to show:
+- Empty: before the first round is revealed, "Your groups will appear here."
+- Main state: two rounds.
+- The tap-a-person sheet open.
+- Never show how anyone was rated, anyone's location, or a list of links.
+```
+
+## Prompt 4B: Variant B, rating only inside My evening
 
 ```text
 Design the My evening screen of Circle Up (phone, same style and rules as before). This screen is also where all feedback is given, so there is no separate rating screen.
@@ -122,14 +168,14 @@ Elements, top to bottom:
 Taps:
 - Tapping Yes, Somewhat or No for the group records it, highlights it and locks it.
 - Tapping Yes, Maybe or No on a person row does the same for that person.
-- Tapping a person's name (not the rating buttons) opens a small sheet from the bottom showing what that person entered when joining: their first name, their one-line topic, and their LinkedIn address if they gave one, as a tappable link, for example "linkedin.com/in/priya-test (test data)". If they gave none, it says "No LinkedIn address shared". The sheet has a "Close" button. Never show a list of everyone's LinkedIn links on the main screen.
+- Tapping a person's name (not the rating buttons) opens a small sheet from the bottom showing what that person entered when joining: their full name, their one-line topic, and their profile addresses (LinkedIn, GitHub, personal site) for those they gave, as tappable links, for example "linkedin.com/in/priya-test (test data)". If they gave none, it says "No profile addresses shared". The sheet has a "Close" button. Never show a list of everyone's links on the main screen.
 
 States to show:
 - Empty: before the first round is revealed, a friendly empty screen with the line "Your groups will appear here."
 - Main state: two rounds, round 2 unrated and round 1 rated.
 - The tap-a-person sheet open.
 - Earlier rounds stay on this screen until the event ends, so they can still be rated and viewed.
-- Never show how anyone was rated, anyone's location, or a list of LinkedIn links.
+- Never show how anyone was rated, anyone's location, or a list of links.
 ```
 
 ## Prompt 5: Organiser (laptop)
