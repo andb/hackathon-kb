@@ -1,0 +1,1333 @@
+#!/usr/bin/env bash
+# kb: keeps a shared folder of documents in step with the team, using plain Git. Run ./kb help.
+set -u
+
+LC_ALL=C
+export LC_ALL
+GIT_PAGER=cat
+PAGER=cat
+GIT_EDITOR=true
+GIT_MERGE_AUTOEDIT=no
+export GIT_PAGER PAGER GIT_EDITOR GIT_MERGE_AUTOEDIT
+
+NL='
+'
+TAB=$(printf '\t')
+CR=$(printf '\r')
+MARK_RE='^(<<<<<<<|>>>>>>>)( |'"$CR"'|$)'
+OM=refs/remotes/origin/main
+TMPBASE=""
+ERRF=""
+LAST_ERR_TEXT=""
+ME=""
+PREFIX=""
+GITDIR=""
+OVERRODE=""
+LOCK_DONE=0
+
+say() { printf '%s\n' "$*"; }
+err() { printf '%s\n' "$*" >&2; }
+
+cleanup() {
+  if [ -n "$TMPBASE" ]; then
+    rm -f "$TMPBASE.index" "$TMPBASE.index.lock" "$TMPBASE.err" "$TMPBASE.list" "$TMPBASE.st" "$TMPBASE.out" "$TMPBASE.num" 2>/dev/null
+  fi
+}
+trap cleanup EXIT
+trap 'exit 130' INT TERM
+
+redact() {
+  sed -e 's#://[^/@ ]*@#://#g' -e 's/gh[pousr]_[A-Za-z0-9_]*/[hidden]/g' -e 's/github_pat_[A-Za-z0-9_]*/[hidden]/g'
+}
+
+show_git_err() {
+  if [ -n "$ERRF" ] && [ -s "$ERRF" ]; then
+    redact < "$ERRF" >&2
+  fi
+}
+
+save_err() {
+  LAST_ERR_TEXT=""
+  if [ -n "$ERRF" ] && [ -s "$ERRF" ]; then
+    LAST_ERR_TEXT=$(cat "$ERRF")
+  fi
+}
+
+trim() {
+  printf '%s' "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+}
+
+jitter_sleep() {
+  local s
+  s=$((1 + RANDOM % 3))
+  sleep "$s.$((RANDOM % 10))" 2>/dev/null || sleep "$s"
+}
+
+gitlit() { git --literal-pathspecs "$@"; }
+
+fetch_origin() { git fetch -q origin 2>"$ERRF"; }
+
+merge_in_progress() { git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; }
+
+rebase_in_progress() { [ -d "$GITDIR/rebase-merge" ] || [ -d "$GITDIR/rebase-apply" ]; }
+
+age_text() {
+  local e="$1" now d
+  case "$e" in
+    ''|*[!0-9]*) printf 'an unknown time'; return ;;
+  esac
+  now=$(date +%s)
+  d=$(( (now - e) / 60 ))
+  [ "$d" -lt 0 ] && d=0
+  if [ "$d" -lt 120 ]; then
+    if [ "$d" -eq 1 ]; then printf '1 minute'; else printf '%s minutes' "$d"; fi
+  elif [ "$d" -lt 2880 ]; then
+    printf '%s hours' $((d / 60))
+  else
+    printf '%s days' $((d / 1440))
+  fi
+}
+
+lock_field() {
+  printf '%s\n' "$2" | sed -n "s/^$1: *//p" | head -n 1 | sed -e 's/[[:space:]]*$//'
+}
+
+# Sets LK_FILE LK_HOLDER LK_SINCE LK_EPOCH LK_NOTE from the lock on revision $1 for path $2; returns 1 when there is none.
+read_lock() {
+  local content
+  LK_FILE="" LK_HOLDER="" LK_SINCE="" LK_EPOCH="" LK_NOTE=""
+  git cat-file -e "$1:locks/$2.lock" 2>/dev/null || return 1
+  content=$(git cat-file blob "$1:locks/$2.lock" 2>/dev/null | tr -d '\r')
+  LK_FILE=$(lock_field file "$content")
+  LK_HOLDER=$(lock_field holder "$content")
+  LK_SINCE=$(lock_field since "$content")
+  LK_EPOCH=$(lock_field epoch "$content")
+  LK_NOTE=$(lock_field note "$content")
+  [ -n "$LK_FILE" ] || LK_FILE="$2"
+  return 0
+}
+
+lock_line() {
+  printf '%s is locked by %s, %s ago: "%s"' "$1" "$LK_HOLDER" "$(age_text "$LK_EPOCH")" "$LK_NOTE"
+}
+
+# Turns a file argument (relative to where kb was called) into a path relative to the repository root, in RP.
+to_repo_path() {
+  local in="$1" full part res="" oldifs="$IFS" top
+  RP=""
+  if [ -z "$in" ]; then
+    err "Give a file name."
+    return 1
+  fi
+  case "$in" in
+    /*)
+      top=$(git rev-parse --show-toplevel 2>/dev/null)
+      case "$in" in
+        "$top"/*) full=${in#"$top"/} ;;
+        *) err "$in is not inside the shared folder. Give the path relative to where you are."; return 1 ;;
+      esac
+      ;;
+    *) full="$PREFIX$in" ;;
+  esac
+  set -f
+  IFS='/'
+  set -- $full
+  IFS="$oldifs"
+  set +f
+  for part in "$@"; do
+    case "$part" in
+      ''|.) ;;
+      ..)
+        if [ -z "$res" ]; then
+          err "$in is outside the shared folder."
+          return 1
+        fi
+        case "$res" in
+          */*) res=${res%/*} ;;
+          *) res="" ;;
+        esac
+        ;;
+      *)
+        if [ -z "$res" ]; then res="$part"; else res="$res/$part"; fi
+        ;;
+    esac
+  done
+  if [ -z "$res" ]; then
+    err "$in is a folder, not a file. Give a file name."
+    return 1
+  fi
+  RP="$res"
+}
+
+require_name() {
+  ME=$(trim "$(git config --local kb.name 2>/dev/null)")
+  if [ -z "$ME" ]; then
+    err "You are not set up in this folder yet. Run ./kb start \"<Your Name>\" first."
+    exit 1
+  fi
+}
+
+require_origin() {
+  if [ -z "$(git config remote.origin.url 2>/dev/null)" ]; then
+    err "This folder has no link to the shared copy (no remote called origin). Clone the shared repository again and run ./kb start \"<Your Name>\" in it."
+    exit 1
+  fi
+}
+
+require_main() {
+  local br
+  br=$(git symbolic-ref -q HEAD 2>/dev/null)
+  if [ "$br" != "refs/heads/main" ]; then
+    err "Your folder is not on the main line of work (it is on ${br#refs/heads/}). Run: git checkout main"
+    exit 1
+  fi
+  if ! git rev-parse -q --verify HEAD >/dev/null 2>&1; then
+    err "Your folder has no history yet. Clone the shared repository again."
+    exit 1
+  fi
+}
+
+require_no_conflict() {
+  if merge_in_progress; then
+    err "A conflict from an earlier ./kb sync is still waiting. Finish it first: edit the files, then ./kb sync (or ./kb abort)."
+    exit 1
+  fi
+}
+
+fetch_or_die() {
+  if ! fetch_origin; then
+    show_git_err
+    err "Could not reach the shared copy. Check your connection and run the same command again."
+    exit 1
+  fi
+  if ! git rev-parse -q --verify "$OM" >/dev/null 2>&1; then
+    err "The shared copy has no main branch yet."
+    exit 1
+  fi
+}
+
+# True when the folder is on main with no unsaved changes, no unsent commits and no conflict waiting.
+folder_clean() {
+  [ "$(git symbolic-ref -q HEAD 2>/dev/null)" = "refs/heads/main" ] || return 1
+  merge_in_progress && return 1
+  rebase_in_progress && return 1
+  [ -z "$(git status --porcelain --untracked-files=all 2>/dev/null)" ] || return 1
+  [ "$(git rev-list --count "$OM..HEAD" 2>/dev/null)" = 0 ] || return 1
+  return 0
+}
+
+# Brings a clean folder up to the shared copy with a fast-forward only; returns 1 when not clean or it fails.
+quiet_ff() {
+  folder_clean || return 1
+  git merge -q --ff-only "$OM" >/dev/null 2>&1
+}
+
+# Commits the folder lacks that change something outside locks/.
+behind_count() {
+  local n
+  n=$(git rev-list --count "HEAD..$OM" -- . ':(exclude)locks' 2>/dev/null) || n=0
+  printf '%s' "${n:-0}"
+}
+
+# Prints "<holder> took this lock over from you <N> minutes ago." when the lock on $OM for $1 was taken over from me.
+takeover_line() {
+  local lp="locks/$1.lock" c subj d now t
+  c=$(gitlit log -1 --format='%H' "$OM" -- "$lp" 2>/dev/null)
+  [ -n "$c" ] || return 0
+  subj=$(git log -1 --format=%s "$c" 2>/dev/null)
+  case "$subj" in
+    "lock: $1 taken over by $LK_HOLDER from $ME ("*) ;;
+    *) return 0 ;;
+  esac
+  t=$LK_EPOCH
+  case "$t" in ''|*[!0-9]*) t=$(git log -1 --format=%ct "$c" 2>/dev/null) ;; esac
+  now=$(date +%s)
+  d=$(( (now - t) / 60 ))
+  [ "$d" -lt 0 ] && d=0
+  if [ "$d" -eq 1 ]; then
+    printf '%s took this lock over from you 1 minute ago.\n' "$LK_HOLDER"
+  else
+    printf '%s took this lock over from you %s minutes ago.\n' "$LK_HOLDER" "$d"
+  fi
+}
+
+AGENT_LINE="Agents: do not use --force unless your person tells you to."
+
+# Files that still hold conflict marks while a merge waits: the unmerged files, plus files changed since HEAD whose content is not simply the other side's.
+marked_files() {
+  local ent p seen="$NL" out=""
+  : > "$TMPBASE.list"
+  git ls-files -u -z > "$TMPBASE.st" 2>/dev/null
+  while IFS= read -r -d '' ent; do
+    printf '%s\0' "${ent#*$TAB}" >> "$TMPBASE.list"
+  done < "$TMPBASE.st"
+  git diff --name-only -z HEAD >> "$TMPBASE.list" 2>/dev/null
+  while IFS= read -r -d '' p; do
+    case "$seen" in *"$NL$p$NL"*) continue ;; esac
+    seen="$seen$p$NL"
+    [ -f "$p" ] || continue
+    grep -q -E "$MARK_RE" -- "$p" 2>/dev/null || continue
+    if ! git ls-files -u -- "$p" 2>/dev/null | grep -q .; then
+      gitlit diff --quiet MERGE_HEAD -- "$p" 2>/dev/null && continue
+    fi
+    out="$out$p$NL"
+  done < "$TMPBASE.list"
+  printf '%s' "$out"
+}
+
+conflict_help() {
+  err "These files have changes from you and from someone else in the same place:"
+  printf '%s\n' "$1" | sed -e 's/^/  /' >&2
+  err "Your work is safe: your changes are saved in your folder's history. Both your text and the other person's are in each file, between lines starting with <<<<<<<, ======= and >>>>>>>."
+  err "In each marked part, the lines above ======= are yours and the lines below it came from the shared copy. Keep both people's content."
+  err "To finish: edit each file so that both people's content stays in it, delete the lines starting with <<<<<<<, ======= and >>>>>>>, then run ./kb sync again."
+  err "To go back to how your folder was before this sync instead: ./kb abort"
+}
+
+unmerged_list() {
+  local ent p seen="$NL" out=""
+  git ls-files -u -z > "$TMPBASE.st" 2>/dev/null
+  while IFS= read -r -d '' ent; do
+    p=${ent#*$TAB}
+    case "$seen" in *"$NL$p$NL"*) continue ;; esac
+    seen="$seen$p$NL"
+    out="$out$p$NL"
+  done < "$TMPBASE.st"
+  printf '%s' "$out"
+}
+
+# Lock check before sending. Sets OVERRODE. Returns 1 when something is locked by someone else and force is off.
+lock_check() {
+  local force="$1" ent xy p orig seen="$NL" lines="" holders="" hl="$NL"
+  local locked="" nlocked=0 others=0 took=""
+  OVERRODE=""
+  : > "$TMPBASE.list"
+  git status --porcelain -z --untracked-files=all > "$TMPBASE.st" 2>/dev/null
+  while IFS= read -r -d '' ent; do
+    xy=${ent%"${ent#??}"}
+    p=${ent#???}
+    printf '%s\0' "$p" >> "$TMPBASE.list"
+    case "$xy" in
+      R?|C?|?R|?C)
+        IFS= read -r -d '' orig && printf '%s\0' "$orig" >> "$TMPBASE.list"
+        ;;
+    esac
+  done < "$TMPBASE.st"
+  git diff --name-only -z "$OM...HEAD" >> "$TMPBASE.list" 2>/dev/null
+  while IFS= read -r -d '' p; do
+    case "$p" in locks/*) continue ;; esac
+    case "$seen" in *"$NL$p$NL"*) continue ;; esac
+    seen="$seen$p$NL"
+    if read_lock "$OM" "$p" && [ "$LK_HOLDER" != "$ME" ]; then
+      lines="$lines  $(lock_line "$p")$NL"
+      orig=$(takeover_line "$p")
+      [ -n "$orig" ] && took="$took$orig$NL"
+      nlocked=$((nlocked + 1))
+      if [ -z "$locked" ]; then locked="$p"; else locked="$locked, $p"; fi
+      case "$hl" in
+        *"$NL$LK_HOLDER$NL"*) ;;
+        *)
+          hl="$hl$LK_HOLDER$NL"
+          if [ -z "$holders" ]; then holders="$LK_HOLDER"; else holders="$holders, $LK_HOLDER"; fi
+          ;;
+      esac
+    else
+      others=1
+    fi
+  done < "$TMPBASE.list"
+  [ -n "$lines" ] || return 0
+  if [ "$force" = 1 ]; then
+    OVERRODE="$holders"
+    printf 'Sending anyway, over these locks:\n%s' "$lines"
+    return 0
+  fi
+  err "Nothing was sent. Someone else is working on these files:"
+  printf '%s' "$lines" >&2
+  [ -n "$took" ] && printf '%s' "$took" >&2
+  err "Your changes are still in your folder; nothing is lost."
+  err "Ask $holders first. If they do not answer, a person can send anyway: ./kb sync --force"
+  err "$AGENT_LINE"
+  err "Or wait until the lock is released, then run ./kb sync again."
+  if [ "$others" = 1 ]; then
+    if [ "$nlocked" = 1 ]; then
+      err "Nothing was sent, including your other changes. To send the rest now: copy your version of $locked somewhere under notes/, run ./kb discard $locked, then ./kb sync."
+    else
+      err "Nothing was sent, including your other changes. To send the rest now: copy your versions of $locked somewhere under notes/, run ./kb discard on each of them, then ./kb sync."
+    fi
+  fi
+  return 1
+}
+
+default_message() {
+  local p n=0 list=""
+  git diff --cached --name-only -z > "$TMPBASE.st" 2>/dev/null
+  while IFS= read -r -d '' p; do
+    n=$((n + 1))
+    if [ "$n" -le 3 ]; then
+      if [ -z "$list" ]; then list="$p"; else list="$list, $p"; fi
+    fi
+  done < "$TMPBASE.st"
+  if [ "$n" -gt 3 ]; then
+    printf 'update: %s, and %s more' "$list" $((n - 3))
+  else
+    printf 'update: %s' "$list"
+  fi
+}
+
+commit_all() {
+  local msg="$1" m
+  if ! git add -A 2>"$ERRF"; then
+    show_git_err
+    err "Could not gather your changes. Nothing was sent; your files are untouched."
+    return 1
+  fi
+  if git diff --cached --quiet 2>/dev/null; then
+    return 0
+  fi
+  m="$msg"
+  [ -n "$m" ] || m=$(default_message)
+  [ -n "$OVERRODE" ] && m="$m (overrode lock held by $OVERRODE)"
+  if ! git commit -q --no-verify -m "$m" >/dev/null 2>"$ERRF"; then
+    show_git_err
+    err "Could not save your changes in your folder's history. Nothing was sent; your files are untouched."
+    return 1
+  fi
+  return 0
+}
+
+count_files() {
+  local n=0 p
+  git diff --name-only -z "$1" "$2" > "$TMPBASE.st" 2>/dev/null
+  while IFS= read -r -d '' p; do n=$((n + 1)); done < "$TMPBASE.st"
+  printf '%s' "$n"
+}
+
+only_locks() {
+  local p
+  git diff-tree --root --no-commit-id -r --no-renames --name-only -z "$1" > "$TMPBASE.st" 2>/dev/null
+  while IFS= read -r -d '' p; do
+    case "$p" in locks/*) ;; *) return 1 ;; esac
+  done < "$TMPBASE.st"
+  return 0
+}
+
+is_merge() { git rev-parse -q --verify "$1^2" >/dev/null 2>&1; }
+
+# Files outside locks/ that a merge changed by hand (the paths of its combined patch), one per line; empty for a merge that needed no editing.
+merge_paths() {
+  git show --format= --cc "$1" 2>/dev/null | sed -n -e 's/^diff --cc //p' -e 's/^diff --combined //p' | grep -v -e '^locks/' -e '^$'
+}
+
+merge_files() {
+  merge_paths "$1" | awk 'NR > 1 { printf ", " } { printf "%s", $0 }'
+}
+
+report_incoming() {
+  local from="$1" c line a when subj p uname any=0 mf
+  uname=$(trim "$(git config user.name 2>/dev/null)")
+  git rev-list --reverse "$from..HEAD" > "$TMPBASE.out" 2>/dev/null
+  while IFS= read -r c; do
+    [ -n "$c" ] || continue
+    line=$(git log -1 --format="%an$TAB%ar$TAB%s" "$c")
+    a=${line%%"$TAB"*}
+    line=${line#*"$TAB"}
+    when=${line%%"$TAB"*}
+    subj=${line#*"$TAB"}
+    [ "$a" = "$ME" ] && continue
+    [ "$a" = "$uname" ] && continue
+    if is_merge "$c"; then
+      mf=$(merge_files "$c")
+      [ -n "$mf" ] || continue
+      if [ "$any" = 0 ]; then say "New from others:"; any=1; fi
+      say "  $a reconciled a conflict in $mf, $when"
+      continue
+    fi
+    only_locks "$c" && continue
+    if [ "$any" = 0 ]; then say "New from others:"; any=1; fi
+    say "  $a, $when: $subj"
+    git diff-tree --root --no-commit-id -r --no-renames --name-only -z "$c" > "$TMPBASE.st" 2>/dev/null
+    while IFS= read -r -d '' p; do
+      case "$p" in locks/*) ;; *) say "      $p" ;; esac
+    done < "$TMPBASE.st"
+  done < "$TMPBASE.out"
+}
+
+# After a send: one line per file where my change, as sent ($1..$2), removed the file or at least 10 lines and at least half of it.
+removal_notes() {
+  local from="$1" to="$2" rec a d p m v
+  git diff --numstat -z --no-renames "$from" "$to" > "$TMPBASE.num" 2>/dev/null
+  while IFS= read -r -d '' rec; do
+    a=${rec%%"$TAB"*}
+    rec=${rec#*"$TAB"}
+    d=${rec%%"$TAB"*}
+    p=${rec#*"$TAB"}
+    case "$p" in locks/*|team/*) continue ;; esac
+    if ! git cat-file -e "$to:$p" 2>/dev/null; then
+      git cat-file -e "$from:$p" 2>/dev/null || continue
+      v=$(gitlit log -1 --format=%h "$from" -- "$p" 2>/dev/null)
+      say "Note: you removed $p. To bring it back: ./kb restore $p $v"
+      continue
+    fi
+    case "$d" in ''|*[!0-9]*) continue ;; esac
+    [ "$d" -ge 10 ] || continue
+    m=$(( $(git cat-file blob "$from:$p" 2>/dev/null | awk 'END { print NR }') ))
+    [ "$m" -gt 0 ] || continue
+    [ $((d * 2)) -ge "$m" ] || continue
+    say "Note: you removed $d of $m lines of $p. To take that back: ./kb undo $p"
+  done < "$TMPBASE.num"
+}
+
+saved_msg() {
+  err "Your changes are saved in your folder's history and will be sent the next time ./kb sync works."
+}
+
+# The sync path. Returns 0, 1, 2 or 3 as the exit codes in kb help.
+do_sync() {
+  local force="$1" msg="$2" head_before attempt=0 nonmoved=0 remote_before now head
+  local sent=0 nfiles=0 behind ahead merges rebased finished=0
+  OVERRODE=""
+  if rebase_in_progress; then
+    err "Your folder is in the middle of a Git rebase (started outside kb). Finish it with: git rebase --continue, or undo it with: git rebase --abort. Then run ./kb sync again."
+    return 1
+  fi
+  if merge_in_progress; then
+    local marked
+    marked=$(marked_files)
+    if [ -n "$marked" ]; then
+      err "The conflict is not finished yet. These files still have conflict lines:"
+      conflict_help "$marked"
+      return 2
+    fi
+    if ! git add -A 2>"$ERRF" || ! git commit -q --no-verify --no-edit >/dev/null 2>>"$ERRF"; then
+      show_git_err
+      err "Could not save the finished conflict. Your edits are still in your files. Run ./kb check, then ./kb sync again."
+      return 1
+    fi
+    finished=1
+    head_before=$(git rev-parse HEAD^1)
+    msg=""
+  else
+    head_before=$(git rev-parse HEAD)
+  fi
+
+  while :; do
+    attempt=$((attempt + 1))
+    if ! fetch_origin; then
+      save_err
+      show_git_err
+      commit_all "$msg" || return 1
+      err "No connection. Your changes are saved in your folder's history and will be sent the next time ./kb sync works."
+      return 1
+    fi
+    if ! git rev-parse -q --verify "$OM" >/dev/null 2>&1; then
+      err "The shared copy has no main branch yet."
+      return 1
+    fi
+    lock_check "$force" || return 3
+    commit_all "$msg" || return 1
+
+    behind=$(git rev-list --count "HEAD..$OM" 2>/dev/null) || behind=0
+    if [ "$behind" -gt 0 ]; then
+      ahead=$(git rev-list --count "$OM..HEAD" 2>/dev/null) || ahead=0
+      if [ "$ahead" -eq 0 ]; then
+        if ! git merge -q --ff-only "$OM" >/dev/null 2>"$ERRF"; then
+          show_git_err
+          err "Could not bring the shared changes into your folder. Nothing of yours was lost. Run ./kb check."
+          return 1
+        fi
+      else
+        rebased=0
+        merges=$(git rev-list --merges --count "$OM..HEAD" 2>/dev/null) || merges=1
+        if [ "$merges" -eq 0 ]; then
+          head=$(git rev-parse HEAD)
+          if git -c merge.conflictStyle=merge rebase -q "$OM" >/dev/null 2>&1; then
+            rebased=1
+          else
+            if rebase_in_progress; then
+              git rebase --abort >/dev/null 2>&1
+            fi
+            if rebase_in_progress || [ "$(git rev-parse HEAD)" != "$head" ]; then
+              err "Something went wrong while combining your changes with the shared copy. Your changes are saved in your folder's history (commit $head)."
+              err "Run: git rebase --abort, then ./kb sync again."
+              return 1
+            fi
+          fi
+        fi
+        if [ "$rebased" = 0 ]; then
+          if ! git -c merge.conflictStyle=merge merge -q --no-edit "$OM" >/dev/null 2>"$ERRF"; then
+            if merge_in_progress; then
+              [ "$finished" = 1 ] && err "That conflict is saved in your folder but not sent yet. While you were editing, someone else changed the same lines again:"
+              conflict_help "$(unmerged_list)"
+              return 2
+            fi
+            show_git_err
+            err "Could not combine your changes with the shared copy. Nothing of yours was lost: it is saved in your folder's history."
+            return 1
+          fi
+        fi
+      fi
+    fi
+
+    head=$(git rev-parse HEAD)
+    remote_before=$(git rev-parse "$OM")
+    [ "$head" = "$remote_before" ] && break
+    nfiles=$(count_files "$remote_before" "$head")
+    if git push -q origin "HEAD:refs/heads/main" 2>"$ERRF"; then
+      sent=1
+      git fetch -q origin 2>/dev/null
+      break
+    fi
+    save_err
+    if ! fetch_origin; then
+      printf '%s\n' "$LAST_ERR_TEXT" | redact >&2
+      saved_msg
+      return 1
+    fi
+    now=$(git rev-parse "$OM")
+    if [ "$now" = "$head" ]; then
+      sent=1
+      break
+    fi
+    if [ "$now" = "$remote_before" ]; then
+      nonmoved=$((nonmoved + 1))
+      if [ "$nonmoved" -ge 3 ] || [ "$attempt" -ge 8 ]; then
+        printf '%s\n' "$LAST_ERR_TEXT" | redact >&2
+        err "The shared copy refused your changes."
+        saved_msg
+        return 1
+      fi
+    elif [ "$attempt" -ge 8 ]; then
+      err "The shared copy kept changing while sending (others are sending at the same moment)."
+      saved_msg
+      err "Run ./kb sync again in a moment."
+      return 1
+    fi
+    jitter_sleep
+  done
+
+  [ "$finished" = 1 ] && say "Conflict finished and saved."
+  if [ "$sent" = 1 ]; then
+    if [ "$nfiles" = 1 ]; then say "Sent 1 changed file."; else say "Sent $nfiles changed files."; fi
+    removal_notes "$remote_before" "$head"
+  else
+    say "Nothing to send."
+  fi
+  report_incoming "$head_before"
+  say "Up to date."
+  [ "$sent" = 1 ] && held_reminders
+  return 0
+}
+
+held_reminders() {
+  local lp p
+  git ls-tree -r -z --name-only "$OM" -- locks/ > "$TMPBASE.out" 2>/dev/null
+  while IFS= read -r -d '' lp; do
+    case "$lp" in *.lock) ;; *) continue ;; esac
+    p=${lp#locks/}
+    p=${p%.lock}
+    read_lock "$OM" "$p" || continue
+    [ "$LK_HOLDER" = "$ME" ] && say "You still hold the lock on $p. When you are finished: ./kb unlock $p"
+  done < "$TMPBASE.out"
+  return 0
+}
+
+diagnose_push() {
+  local t="$LAST_ERR_TEXT"
+  case "$t" in
+    *GH007*)
+      err ""
+      err "GitHub refused the change to protect your private email address."
+      err "Fix: git config user.email \"<your GitHub user name>@users.noreply.github.com\""
+      err "then run ./kb start \"$1\" again."
+      return 0
+      ;;
+  esac
+  if printf '%s' "$t" | grep -i -q -e '403' -e 'denied' -e 'not found'; then
+    err ""
+    err "GitHub did not let you in. Most likely the invitation to the repository has not been accepted yet: open the invitation email or https://github.com/notifications, accept it, then run ./kb start \"$1\" again."
+  fi
+}
+
+cmd_start() {
+  local name slug email up rc unsent_before
+  name=$(trim "$*")
+  if [ -z "$name" ]; then
+    ME=$(trim "$(git config --local kb.name 2>/dev/null)")
+    if [ -n "$ME" ]; then
+      say "This folder is set up for $ME."
+      return 0
+    fi
+    err "Usage: ./kb start \"<Your Name>\""
+    return 1
+  fi
+  require_origin
+  git config user.name "$name" || { err "Could not save your name in this folder."; return 1; }
+  slug=$(printf '%s' "$name" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9' '-' | tr -s '-' | sed -e 's/^-//' -e 's/-$//')
+  [ -n "$slug" ] || slug=member
+  email=$(git config user.email 2>/dev/null)
+  if [ -z "$email" ]; then
+    git config user.email "$slug@users.noreply.github.com"
+  fi
+  git config pull.rebase false
+  git config core.autocrlf false
+  ME="$name"
+
+  if ! fetch_origin; then
+    save_err
+    show_git_err
+    err "Could not reach the shared copy."
+    diagnose_push "$name"
+    return 1
+  fi
+  if ! git rev-parse -q --verify "$OM" >/dev/null 2>&1; then
+    err "The shared copy has no main branch yet. Ask whoever made the repository to push it first."
+    return 1
+  fi
+  if [ "$(git symbolic-ref -q HEAD 2>/dev/null)" != "refs/heads/main" ]; then
+    err "Your folder is not on the main line of work. Run: git checkout main, then ./kb start \"$name\" again."
+    return 1
+  fi
+  up=$(git rev-parse --abbrev-ref --symbolic-full-name 'main@{upstream}' 2>/dev/null)
+  if [ "$up" != "origin/main" ]; then
+    if ! git branch -q --set-upstream-to=origin/main main >/dev/null 2>"$ERRF"; then
+      show_git_err
+      err "Your main line of work is not linked to the shared copy and could not be linked. Clone the shared repository again."
+      return 1
+    fi
+  fi
+
+  if ! git cat-file -e "$OM:team/$slug.md" 2>/dev/null; then
+    unsent_before=$(git rev-list --count "$OM..HEAD" 2>/dev/null) || unsent_before=1
+    if [ ! -e "team/$slug.md" ]; then
+      mkdir -p team
+      printf '# %s\n\nJoined %s\n' "$name" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "team/$slug.md"
+    fi
+    LAST_ERR_TEXT=""
+    do_sync 0 "join: $name"
+    rc=$?
+    if [ "$rc" -ne 0 ]; then
+      case "$LAST_ERR_TEXT" in
+        *GH007*)
+          # Undo the unsent join commit (content stays in the folder) so the next start commits it with the new email.
+          if [ "$unsent_before" = 0 ] && git merge-base --is-ancestor "$OM" HEAD 2>/dev/null; then
+            git reset -q --soft "$OM" 2>/dev/null
+          fi
+          ;;
+      esac
+      diagnose_push "$name"
+      return "$rc"
+    fi
+  fi
+
+  if ! git rev-parse -q --verify refs/kb/seen >/dev/null 2>&1; then
+    git update-ref refs/kb/seen "$OM"
+  fi
+  # Set only after the first send went through, so a folder that never proved it can send stays not set up.
+  git config kb.name "$name" || { err "Could not save your name in this folder."; return 1; }
+  say "Ready. You are $ME."
+  say "  ./kb sync             send your changes and get everyone else's"
+  say "  ./kb lock <file>      tell the others you are working on a file"
+  say "  ./kb news             see what changed since you last looked"
+  return 0
+}
+
+cmd_sync() {
+  local force=0 msg="" a
+  for a in "$@"; do
+    case "$a" in
+      --force|-f) force=1 ;;
+      *) if [ -z "$msg" ]; then msg="$a"; else msg="$msg $a"; fi ;;
+    esac
+  done
+  require_main
+  do_sync "$force" "$msg"
+}
+
+cmd_abort() {
+  if merge_in_progress; then
+    if git merge --abort 2>"$ERRF"; then
+      say "Your folder is back to how it was before the sync. Your changes are saved in your folder's history but not sent."
+      say "The same conflict will come back on the next ./kb sync until the file is reconciled."
+      return 0
+    fi
+    show_git_err
+    err "Could not go back. Run ./kb check and ask for help; do not delete the folder."
+    return 1
+  fi
+  if rebase_in_progress; then
+    say "A Git rebase (started outside kb) is in progress. Undo it with: git rebase --abort"
+    return 0
+  fi
+  say "Nothing to abort."
+  return 0
+}
+
+# Builds one lock or unlock commit on top of the shared copy and pushes it, without touching the folder.
+lock_change() {
+  local mode="$1" force="$2" p="$3" note="$4" lp="locks/$3.lock"
+  local attempt=0 nonmoved=0 base msg content blob tree commit now idx="$TMPBASE.index" held done_msg took
+  LOCK_DONE=0
+  while [ "$attempt" -lt 8 ]; do
+    attempt=$((attempt + 1))
+    if ! fetch_origin; then
+      show_git_err
+      if [ "$mode" = lock ]; then
+        err "Could not reach the shared copy, so $p was NOT locked. Check your connection and run the same command again."
+      else
+        err "Could not reach the shared copy, so $p was NOT unlocked. Check your connection and run the same command again."
+      fi
+      return 1
+    fi
+    base=$(git rev-parse -q --verify "$OM") || { err "The shared copy has no main branch yet."; return 1; }
+    if read_lock "$base" "$p"; then held=1; else held=0; fi
+    if [ "$mode" = lock ]; then
+      if [ "$held" = 1 ] && [ "$LK_HOLDER" = "$ME" ]; then
+        say "You already hold the lock on $p (since $LK_SINCE, note: \"$LK_NOTE\")."
+        return 0
+      elif [ "$held" = 1 ] && [ "$force" != 1 ]; then
+        err "$(lock_line "$p")."
+        err "Ask $LK_HOLDER first. If they do not answer, a person can take it over: ./kb lock --force $p"
+        err "$AGENT_LINE"
+        return 3
+      elif [ "$held" = 1 ]; then
+        msg="lock: $p taken over by $ME from $LK_HOLDER (held since $LK_SINCE)"
+        done_msg="Locked $p for $ME. The lock was taken over from $LK_HOLDER."
+      else
+        msg="lock: $p ($ME)"
+        done_msg="Locked $p for $ME."
+      fi
+      content="file: $p${NL}holder: $ME${NL}since: $(date -u +%Y-%m-%dT%H:%M:%SZ)${NL}epoch: $(date +%s)${NL}note: $note${NL}"
+    else
+      if [ "$held" = 0 ]; then
+        say "There is no lock on $p."
+        return 0
+      elif [ "$LK_HOLDER" = "$ME" ]; then
+        msg="unlock: $p ($ME)"
+        done_msg="Unlocked $p."
+      elif [ "$force" != 1 ]; then
+        err "$(lock_line "$p")."
+        took=$(takeover_line "$p")
+        [ -n "$took" ] && err "$took"
+        err "Ask $LK_HOLDER first. If they do not answer, a person can remove it: ./kb unlock --force $p"
+        err "$AGENT_LINE"
+        return 3
+      else
+        msg="unlock: $p forced by $ME, was held by $LK_HOLDER since $LK_SINCE"
+        done_msg="Unlocked $p. The lock held by $LK_HOLDER was removed."
+      fi
+    fi
+
+    rm -f "$idx" "$idx.lock"
+    if ! GIT_INDEX_FILE="$idx" git read-tree "$base" 2>"$ERRF"; then
+      show_git_err; err "Could not prepare the lock change. Nothing changed."; return 1
+    fi
+    if [ "$mode" = lock ]; then
+      blob=$(printf '%s' "$content" | git hash-object -w --stdin 2>"$ERRF") &&
+        GIT_INDEX_FILE="$idx" git update-index --add --cacheinfo 100644 "$blob" "$lp" 2>"$ERRF"
+    else
+      GIT_INDEX_FILE="$idx" git update-index --force-remove "$lp" 2>"$ERRF"
+    fi
+    if [ $? -ne 0 ]; then
+      show_git_err; err "Could not prepare the lock change. Nothing changed."; return 1
+    fi
+    tree=$(GIT_INDEX_FILE="$idx" git write-tree 2>"$ERRF") &&
+      commit=$(git commit-tree "$tree" -p "$base" -m "$msg" 2>"$ERRF")
+    if [ $? -ne 0 ] || [ -z "$commit" ]; then
+      show_git_err; err "Could not prepare the lock change. Nothing changed."; return 1
+    fi
+    rm -f "$idx"
+
+    if git push -q origin "$commit:refs/heads/main" 2>"$ERRF"; then
+      git fetch -q origin 2>/dev/null
+      say "$done_msg"
+      LOCK_DONE=1
+      return 0
+    fi
+    save_err
+    if ! fetch_origin; then
+      printf '%s\n' "$LAST_ERR_TEXT" | redact >&2
+      err "Lost the connection to the shared copy; $p was not changed. Run the same command again."
+      return 1
+    fi
+    now=$(git rev-parse "$OM")
+    if [ "$now" = "$commit" ]; then
+      say "$done_msg"
+      LOCK_DONE=1
+      return 0
+    fi
+    if [ "$now" = "$base" ]; then
+      nonmoved=$((nonmoved + 1))
+      if [ "$nonmoved" -ge 3 ]; then
+        printf '%s\n' "$LAST_ERR_TEXT" | redact >&2
+        err "The shared copy refused the change; $p was not changed."
+        return 1
+      fi
+    fi
+    jitter_sleep
+  done
+  err "The shared copy kept changing (others are sending at the same moment); $p was not changed. Run the same command again."
+  return 1
+}
+
+lock_args() {
+  FORCE=0
+  FILE_ARG=""
+  NOTE_ARG=""
+  local a got=0
+  for a in "$@"; do
+    case "$a" in
+      --force|-f) FORCE=1 ;;
+      *)
+        if [ "$got" = 0 ]; then FILE_ARG="$a"; got=1
+        elif [ -z "$NOTE_ARG" ]; then NOTE_ARG="$a"
+        else NOTE_ARG="$NOTE_ARG $a"
+        fi
+        ;;
+    esac
+  done
+}
+
+cmd_lock() {
+  lock_args "$@"
+  if [ -z "$FILE_ARG" ]; then
+    err "Usage: ./kb lock [--force] <file> [\"note\"]"
+    return 1
+  fi
+  to_repo_path "$FILE_ARG" || return 1
+  case "$RP" in
+    locks|locks/*) err "Files under locks/ cannot be locked."; return 1 ;;
+    kb) err "kb itself cannot be locked."; return 1 ;;
+  esac
+  if [ -d "$RP" ]; then
+    err "$RP is a folder. Only files can be locked."
+    return 1
+  fi
+  NOTE_ARG=$(printf '%s' "$NOTE_ARG" | tr '\r\n' '  ')
+  lock_change lock "$FORCE" "$RP" "$NOTE_ARG" || return $?
+  [ "$LOCK_DONE" = 1 ] || return 0
+  if quiet_ff; then
+    say "Your folder is up to date."
+  elif [ -n "$(gitlit status --porcelain --untracked-files=all -- "$RP" 2>/dev/null)" ]; then
+    say "You already have changes to $RP that are not sent; ./kb sync will merge them with the shared version."
+  elif ! gitlit diff --quiet HEAD "$OM" -- "$RP" 2>/dev/null; then
+    say "Your copy of $RP is older than the shared one. Run ./kb sync before you edit it."
+  fi
+  return 0
+}
+
+cmd_unlock() {
+  lock_args "$@"
+  if [ -z "$FILE_ARG" ]; then
+    err "Usage: ./kb unlock [--force] <file>"
+    return 1
+  fi
+  to_repo_path "$FILE_ARG" || return 1
+  lock_change unlock "$FORCE" "$RP" "" || return $?
+  [ "$LOCK_DONE" = 1 ] && quiet_ff
+  return 0
+}
+
+list_locks() {
+  local lp p you any=0
+  git ls-tree -r -z --name-only "$OM" -- locks/ > "$TMPBASE.out" 2>/dev/null
+  while IFS= read -r -d '' lp; do
+    case "$lp" in *.lock) ;; *) continue ;; esac
+    p=${lp#locks/}
+    p=${p%.lock}
+    read_lock "$OM" "$p" || continue
+    you=""
+    [ "$LK_HOLDER" = "$ME" ] && you="  (you)"
+    if [ "$1" = mine ] && [ -z "$you" ]; then continue; fi
+    printf '%s  %s  %s  "%s"%s\n' "$LK_FILE" "$LK_HOLDER" "$(age_text "$LK_EPOCH")" "$LK_NOTE" "$you"
+    any=1
+  done < "$TMPBASE.out"
+  [ "$any" = 1 ]
+}
+
+cmd_locks() {
+  fetch_or_die
+  list_locks all || say "No locks."
+  return 0
+}
+
+seen_mark() {
+  git rev-parse -q --verify refs/kb/seen 2>/dev/null
+}
+
+cmd_news() {
+  local mark c shown=0 st p behind locks_txt shown_top uname line h a when subj mf
+  fetch_or_die
+  mark=$(seen_mark)
+  if [ $# -gt 0 ]; then
+    to_repo_path "$1" || return 1
+    if [ -z "$mark" ]; then
+      mark=$(git rev-list -n 20 "$OM" | tail -n 1)
+      git rev-parse -q --verify "$mark^" >/dev/null 2>&1 && mark="$mark^"
+    fi
+    gitlit diff "$mark" "$OM" -- "$RP" > "$TMPBASE.out" 2>"$ERRF"
+    if [ -s "$TMPBASE.out" ]; then
+      cat "$TMPBASE.out"
+    else
+      say "No changes to $RP since you last marked the news as read."
+    fi
+    return 0
+  fi
+  shown_top=$(git rev-parse "$OM")
+  uname=$(trim "$(git config user.name 2>/dev/null)")
+  if [ -n "$mark" ]; then
+    git rev-list --reverse "$mark..$shown_top" > "$TMPBASE.list" 2>/dev/null
+  else
+    git rev-list --reverse -n 20 "$shown_top" > "$TMPBASE.list" 2>/dev/null
+  fi
+  while IFS= read -r c; do
+    [ -n "$c" ] || continue
+    line=$(git log -1 --format="%h$TAB%an$TAB%ar$TAB%s" "$c")
+    h=${line%%"$TAB"*}; line=${line#*"$TAB"}
+    a=${line%%"$TAB"*}; line=${line#*"$TAB"}
+    when=${line%%"$TAB"*}; subj=${line#*"$TAB"}
+    if [ "$a" = "$ME" ] || [ "$a" = "$uname" ]; then a="(you)"; fi
+    if is_merge "$c"; then
+      mf=$(merge_files "$c")
+      [ -n "$mf" ] || continue
+      say "$h  $a reconciled a conflict in $mf, $when"
+      shown=1
+      continue
+    fi
+    only_locks "$c" && continue
+    say "$h  $a  $when  $subj"
+    git diff-tree --root --no-commit-id -r --no-renames --name-status -z "$c" > "$TMPBASE.st" 2>/dev/null
+    while IFS= read -r -d '' st && IFS= read -r -d '' p; do
+      case "$p" in locks/*) continue ;; esac
+      say "    $st  $p"
+    done < "$TMPBASE.st"
+    shown=1
+  done < "$TMPBASE.list"
+  [ "$shown" = 1 ] || say "No news."
+  locks_txt=$(list_locks all)
+  if [ -n "$locks_txt" ]; then
+    say "Locks:"
+    printf '%s\n' "$locks_txt" | sed -e 's/^/  /'
+  fi
+  behind=$(behind_count)
+  if [ "$behind" -gt 0 ]; then
+    say "Your folder does not have these yet: run ./kb sync"
+  fi
+  git update-ref refs/kb/shown "$shown_top" 2>/dev/null
+  return 0
+}
+
+# Changes after $1 on the locally known shared copy that ./kb news would list.
+count_listed() {
+  local c n=0
+  git rev-list "$1..$OM" > "$TMPBASE.list" 2>/dev/null
+  while IFS= read -r c; do
+    [ -n "$c" ] || continue
+    if is_merge "$c"; then
+      [ -n "$(merge_files "$c")" ] && n=$((n + 1))
+      continue
+    fi
+    only_locks "$c" || n=$((n + 1))
+  done < "$TMPBASE.list"
+  printf '%s' "$n"
+}
+
+cmd_seen() {
+  local top n
+  require_no_conflict
+  top=$(git rev-parse -q --verify refs/kb/shown 2>/dev/null)
+  if [ -z "$top" ]; then
+    err "Run ./kb news first, so you know what you are marking as read."
+    return 1
+  fi
+  git update-ref refs/kb/seen "$top" || { err "Could not move the news mark."; return 1; }
+  say "Marked as read up to what ./kb news last showed."
+  if git rev-parse -q --verify "$OM" >/dev/null 2>&1; then
+    n=$(count_listed "$top")
+    if [ "$n" -gt 0 ]; then
+      if [ "$n" = 1 ]; then say "There is 1 newer change: run ./kb news."; else say "There are $n newer changes: run ./kb news."; fi
+    fi
+  fi
+  return 0
+}
+
+cmd_notes() {
+  local spec='*.md'
+  if [ $# -gt 0 ] && [ -n "$1" ]; then
+    to_repo_path "$1" 2>/dev/null
+    if [ -z "$RP" ]; then
+      spec='*.md'
+    elif [ -d "$RP" ]; then
+      spec="$RP/*.md"
+    else
+      spec="$RP"
+    fi
+  fi
+  git grep -n -I -e '\[\[' -e '>>>' -- "$spec" ':(exclude)README.md' ':(exclude)AGENTS.md' ':(exclude)CLAUDE.md' ':(exclude)plain-git.md' >"$TMPBASE.out" 2>/dev/null
+  if [ -s "$TMPBASE.out" ]; then
+    sed -e 's/^\([^:]*\):\([0-9][0-9]*\):/\1:\2: /' "$TMPBASE.out"
+  else
+    say "No open notes."
+  fi
+  return 0
+}
+
+cmd_history() {
+  if [ $# -lt 1 ]; then
+    err "Usage: ./kb history <file>"
+    return 1
+  fi
+  to_repo_path "$1" || return 1
+  local kind hash rest any=0
+  # -m because --follow otherwise leaves out every merge; a merge then repeats once per parent.
+  gitlit log --follow -m --numstat --format='@@kb%x09%H%x09%P%x09%h  %ad  %an%x09%s' --date=format:'%Y-%m-%d %H:%M' -- "$RP" 2>"$ERRF" | awk -F '\t' '
+    function flush() {
+      if (head == "") return
+      if (bin) cnt = "binary"; else cnt = "+" add " -" del
+      print "N\t-\t" head "  " cnt "  " subj
+      head = ""
+    }
+    $1 == "@@kb" && $2 == last { next }
+    $1 == "@@kb" {
+      flush()
+      last = $2
+      subj = $5; for (i = 6; i <= NF; i++) subj = subj "\t" $i
+      if (index($3, " ") > 0) { print "M\t" $2 "\t" $4 "  reconciled  " subj; next }
+      head = $4; add = 0; del = 0; bin = 0; next
+    }
+    NF >= 3 && head != "" { if ($1 == "-" || $2 == "-") bin = 1; else { add += $1; del += $2 } }
+    END { flush() }
+  ' > "$TMPBASE.out"
+  while IFS="$TAB" read -r kind hash rest; do
+    if [ "$kind" = M ]; then
+      merge_paths "$hash" | grep -q -x -F -e "$RP" || continue
+    fi
+    say "$rest"
+    any=1
+  done < "$TMPBASE.out"
+  if [ "$any" = 0 ]; then
+    say "No history for $RP."
+  fi
+  return 0
+}
+
+refuse_if_unsent() {
+  if [ -n "$(gitlit status --porcelain --untracked-files=all -- "$1" 2>/dev/null)" ]; then
+    err "$1 has changes in your folder that have not been sent. Run ./kb sync first, or ./kb discard $1 to drop them."
+    exit 1
+  fi
+}
+
+refuse_if_locked() {
+  if fetch_origin && read_lock "$OM" "$1" && [ "$LK_HOLDER" != "$ME" ]; then
+    err "$(lock_line "$1"). Nothing was changed. Wait, or ask $LK_HOLDER to unlock it."
+    exit 3
+  fi
+}
+
+cmd_undo() {
+  local c short subj
+  if [ $# -lt 1 ]; then
+    err "Usage: ./kb undo <file>"
+    return 1
+  fi
+  require_main
+  require_no_conflict
+  to_repo_path "$1" || return 1
+  refuse_if_unsent "$RP"
+  c=$(gitlit log -n 1 --format=%H HEAD -- "$RP" 2>/dev/null)
+  if [ -z "$c" ]; then
+    err "$RP has no history to undo."
+    return 1
+  fi
+  if is_merge "$c"; then
+    if merge_paths "$c" | grep -q -x -F -e "$RP"; then
+      err "The last change to $RP was $(git log -1 --format=%an "$c") reconciling a conflict. Pick the version you want from ./kb history $RP and run ./kb restore $RP <version>."
+    else
+      err "The last change to $RP combined two people's changes. Pick the version you want from ./kb history $RP and run ./kb restore $RP <version>."
+    fi
+    return 1
+  fi
+  refuse_if_locked "$RP"
+  short=$(git rev-parse --short "$c")
+  subj=$(git log -1 --format=%s "$c")
+  if git cat-file -e "$c^:$RP" 2>/dev/null; then
+    gitlit checkout -q "$c^" -- "$RP" 2>"$ERRF" || { show_git_err; err "Could not undo. Nothing changed."; return 1; }
+  else
+    gitlit rm -q -- "$RP" >/dev/null 2>"$ERRF" || { show_git_err; err "Could not undo. Nothing changed."; return 1; }
+  fi
+  do_sync 0 "undo: $RP back to before $short ($subj)" || return $?
+  quiet_ff
+  return 0
+}
+
+cmd_restore() {
+  local c short
+  if [ $# -lt 2 ]; then
+    err "Usage: ./kb restore <file> <version>   (versions are listed by ./kb history <file>)"
+    return 1
+  fi
+  require_main
+  require_no_conflict
+  to_repo_path "$1" || return 1
+  c=$(git rev-parse -q --verify "$2^{commit}" 2>/dev/null)
+  if [ -z "$c" ]; then
+    err "There is no version $2. See ./kb history $RP."
+    return 1
+  fi
+  if ! git cat-file -e "$c:$RP" 2>/dev/null; then
+    err "$RP did not exist in version $2. See ./kb history $RP."
+    return 1
+  fi
+  refuse_if_unsent "$RP"
+  refuse_if_locked "$RP"
+  short=$(git rev-parse --short "$c")
+  gitlit checkout -q "$c" -- "$RP" 2>"$ERRF" || { show_git_err; err "Could not restore. Nothing changed."; return 1; }
+  if [ -z "$(gitlit status --porcelain -- "$RP")" ]; then
+    say "$RP is already as it was in version $short."
+    return 0
+  fi
+  do_sync 0 "restore: $RP as of $short" || return $?
+  quiet_ff
+  return 0
+}
+
+cmd_discard() {
+  if [ $# -lt 1 ]; then
+    err "Usage: ./kb discard <file>"
+    return 1
+  fi
+  require_no_conflict
+  to_repo_path "$1" || return 1
+  if [ -d "$RP" ]; then
+    err "$RP is a folder. Give one file."
+    return 1
+  fi
+  if [ -z "$(gitlit status --porcelain --untracked-files=all -- "$RP" 2>/dev/null)" ]; then
+    say "$RP has no unsent changes. Nothing to drop."
+    return 0
+  fi
+  if git cat-file -e "HEAD:$RP" 2>/dev/null; then
+    gitlit checkout -q HEAD -- "$RP" 2>"$ERRF" || { show_git_err; err "Could not drop the changes."; return 1; }
+  else
+    if gitlit ls-files --error-unmatch -- "$RP" >/dev/null 2>&1; then
+      gitlit rm -q --cached -- "$RP" >/dev/null 2>&1
+    fi
+    rm -f -- "$RP"
+  fi
+  say "Dropped your unsent changes to $RP."
+}
+
+cmd_check() {
+  local reach=no behind="?" ahead="?" conflict=no rc=0 mine
+  say "Git: $(git --version 2>/dev/null)"
+  say "You: $ME"
+  say "Shared copy: $(git config remote.origin.url 2>/dev/null | redact)"
+  if fetch_origin && git rev-parse -q --verify "$OM" >/dev/null 2>&1; then
+    reach=yes
+  else
+    rc=1
+  fi
+  say "Shared copy reachable: $reach"
+  if git rev-parse -q --verify "$OM" >/dev/null 2>&1 && git rev-parse -q --verify HEAD >/dev/null 2>&1; then
+    behind=$(behind_count)
+    ahead=$(git rev-list --count "$OM..HEAD" 2>/dev/null)
+  fi
+  case "$behind" in
+    ''|*[!0-9]*|0) say "Your folder is $behind behind and $ahead ahead of the shared copy." ;;
+    *) say "Your folder is $behind behind and $ahead ahead of the shared copy: run ./kb sync" ;;
+  esac
+  if merge_in_progress || rebase_in_progress; then
+    conflict=yes
+    rc=1
+  fi
+  say "Conflict waiting: $conflict"
+  mine=""
+  if git rev-parse -q --verify "$OM" >/dev/null 2>&1; then
+    mine=$(list_locks mine)
+  fi
+  if [ -n "$mine" ]; then
+    say "Your locks:"
+    printf '%s\n' "$mine" | sed -e 's/^/  /'
+  else
+    say "Your locks: none"
+  fi
+  return "$rc"
+}
+
+cmd_help() {
+  cat <<'EOF'
+kb keeps this shared folder in step with the team. Run it from anywhere inside the folder.
+
+  ./kb start "Your Name"      set up this folder once and check you can send
+  ./kb sync ["message"]       send your changes and get everyone else's
+  ./kb sync --force           send even files someone else has locked
+  ./kb abort                  give up a conflict and go back to before the sync
+  ./kb lock <file> ["note"]   tell the others you are working on a file
+  ./kb lock --force <file>    take over someone else's lock
+  ./kb unlock <file>          release your lock (--force: remove anyone's)
+  ./kb locks                  list who is working on what
+  ./kb news [<file>]          what changed since you last looked
+  ./kb seen                   mark the news as read
+  ./kb notes [<path>]         list open review notes ([[ ]] and >>> <<<)
+  ./kb history <file>         every change to a file, newest first
+  ./kb undo <file>            put a file back to before its last change
+  ./kb restore <file> <id>    bring a file back as it was at a version
+  ./kb discard <file>         drop your unsent changes to one file
+  ./kb check                  show your setup and whether all is well
+  ./kb help                   this screen
+
+Exit codes: 0 done, 1 refused or failed, 2 a conflict needs your edit,
+3 someone else holds a lock.
+EOF
+}
+
+main() {
+  local cmd="${1:-help}"
+  [ $# -gt 0 ] && shift
+  case "$cmd" in
+    help|-h|--help) cmd_help; return 0 ;;
+  esac
+  if [ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != "true" ]; then
+    err "This folder is not inside the shared repository. Go into the folder you cloned and run ./kb again."
+    return 1
+  fi
+  PREFIX=$(git rev-parse --show-prefix 2>/dev/null)
+  local cdup
+  cdup=$(git rev-parse --show-cdup 2>/dev/null)
+  if [ -n "$cdup" ]; then
+    cd "$cdup" || { err "Could not go to the top of the shared folder."; return 1; }
+  fi
+  GITDIR=$(git rev-parse --git-dir 2>/dev/null)
+  if [ -z "$GITDIR" ] || [ ! -d "$GITDIR" ]; then
+    err "Could not find the repository's Git folder."
+    return 1
+  fi
+  TMPBASE="$GITDIR/kb-tmp.$$"
+  ERRF="$TMPBASE.err"
+  : > "$ERRF" || { err "Cannot write inside $GITDIR."; return 1; }
+
+  case "$cmd" in
+    start) cmd_start "$@"; return $? ;;
+  esac
+  require_name
+  require_origin
+  case "$cmd" in
+    sync) cmd_sync "$@" ;;
+    abort) cmd_abort ;;
+    lock) cmd_lock "$@" ;;
+    unlock) cmd_unlock "$@" ;;
+    locks) cmd_locks ;;
+    news) cmd_news "$@" ;;
+    seen) cmd_seen ;;
+    notes) cmd_notes "$@" ;;
+    history) cmd_history "$@" ;;
+    undo) cmd_undo "$@" ;;
+    restore) cmd_restore "$@" ;;
+    discard) cmd_discard "$@" ;;
+    check) cmd_check ;;
+    *) err "Unknown command: $cmd. Run ./kb help to see the commands."; return 1 ;;
+  esac
+}
+
+main "$@"
+exit $?
