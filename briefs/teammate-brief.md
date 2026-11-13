@@ -1,3 +1,5 @@
+# Circle Up: what we need from you this afternoon
+
 
 
 This page: https://github.com/andb/hackathon-kb/blob/main/briefs/teammate-brief.md (comment by editing it on GitHub: wrap words in `>>> ... <<<` and add `[[ Your name: note ]]` after them).
